@@ -512,7 +512,7 @@ repositories {
     mavenCentral()
     maven {
         name = "GitHubPackages"
-        url = uri("https://maven.pkg.github.com/pawtrail/common")
+        url = uri("https://maven.pkg.github.com/paw-trail/common")
         credentials {
             username = System.getenv("GPR_USER")
             password = System.getenv("GPR_TOKEN")
