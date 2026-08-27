@@ -6,6 +6,33 @@
 
 파일 이름 뒤의 괄호는 자바 타입을 뜻합니다. 자바에서는 클래스, 인터페이스, enum, record가 모두 `.java` 파일이라 이름만으로는 구분되지 않으므로 따로 표기했습니다.
 
+---
+
+## 0. 이 문서를 읽는 순서
+
+문서가 길지만 처음부터 끝까지 읽을 필요는 없습니다. 지금 무엇을 하려는지에 따라 볼 곳이 다릅니다.
+
+| 지금 하려는 일 | 볼 곳 |
+|---|---|
+| 방금 레포를 만들었고 코드를 처음 연다 | **1장** 을 순서대로 따라 합니다. 여기만 끝내면 빌드가 통과합니다 |
+| 로컬에서 서비스를 띄워보려 한다 | **2장**. 무엇을 Docker 로 띄우고 무엇을 IntelliJ 에서 실행하는지 나옵니다 |
+| 공통 모듈이 무엇인지 모르겠다 | **6장**. 무엇이 들어 있고 어떻게 쓰는지 코드 예시와 함께 있습니다 |
+| 코드를 어느 폴더에 둘지 모르겠다 | **5장**(왜 이렇게 나누는가) → **7장**(폴더마다 무엇을 두는가) |
+| 기동이 안 되거나 IntelliJ 가 빨간 줄을 긋는다 | **1-7**, **10장** |
+| DB 를 쓰지 않는 서비스를 맡았다 | **1-4** → **8장** |
+
+**처음 읽는다면 1장 → 5장 → 6장 → 7장 순서를 권합니다.** 1장으로 환경을 만들고, 5장으로 왜 이렇게 나눴는지 이해한 뒤, 6장에서 공통으로 제공되는 것을 익히고, 7장에서 실제 파일을 어디에 만들지 확인하는 흐름입니다.
+
+### 먼저 알아두면 좋은 것 3가지
+
+**① 서비스마다 DB 가 따로 있고, 남의 DB 에는 접속할 수 없습니다.** PostgreSQL 인스턴스는 하나지만 그 안에 서비스별 DB 와 전용 계정이 나뉘어 있습니다. 다른 서비스의 데이터가 필요하면 **그 서비스의 API 를 호출하거나 이벤트를 받습니다.**
+
+**② 인증은 게이트웨이가 끝냅니다.** 각 서비스는 JWT 를 직접 다루지 않습니다. 게이트웨이가 토큰을 검증한 뒤 `X-User-Id`·`X-User-Role` 헤더로 넣어주고, 공통 모듈의 필터가 그것을 읽어 `SecurityContext` 를 채웁니다.
+
+**③ 이벤트는 카프카로 바로 보내지 않습니다.** 자기 DB 의 `outbox` 테이블에 먼저 저장하고, 커밋된 뒤에 별도 스레드가 발행합니다. "데이터는 저장됐는데 이벤트는 안 나갔다"를 막기 위한 구조이며, 공통 모듈이 전부 처리하므로 사용하는 쪽은 한 줄만 부르면 됩니다.
+
+---
+
 ## 기술 스택
 
 | 항목 | 버전 |
@@ -51,9 +78,13 @@ mv src/test/java/com/pawtrail/template src/test/java/com/pawtrail/$NEW
 # 2) 소스 안의 package 선언과 import 치환
 grep -rl "com.pawtrail.template" src | xargs sed -i '' "s/com\.pawtrail\.template/com.pawtrail.$NEW/g"
 
-# 3) TemplateApplication.java 를 <서비스명>Application.java 로 변경
+# 3) 클래스 파일 이름 변경 (main, test 양쪽)
 mv src/main/java/com/pawtrail/$NEW/TemplateApplication.java \
    src/main/java/com/pawtrail/$NEW/${CLASS}Application.java
+mv src/test/java/com/pawtrail/$NEW/TemplateApplicationTests.java \
+   src/test/java/com/pawtrail/$NEW/${CLASS}ApplicationTests.java
+
+# 4) 소스 안의 클래스명 치환
 grep -rl "TemplateApplication" src | xargs sed -i '' "s/TemplateApplication/${CLASS}Application/g"
 ```
 
@@ -72,9 +103,13 @@ mv src/test/java/com/pawtrail/template src/test/java/com/pawtrail/$NEW
 # 2) 소스 안의 package 선언과 import 치환
 grep -rl "com.pawtrail.template" src | xargs sed -i "s/com\.pawtrail\.template/com.pawtrail.$NEW/g"
 
-# 3) TemplateApplication.java 를 <서비스명>Application.java 로 변경
+# 3) 클래스 파일 이름 변경 (main, test 양쪽)
 mv src/main/java/com/pawtrail/$NEW/TemplateApplication.java \
    src/main/java/com/pawtrail/$NEW/${CLASS}Application.java
+mv src/test/java/com/pawtrail/$NEW/TemplateApplicationTests.java \
+   src/test/java/com/pawtrail/$NEW/${CLASS}ApplicationTests.java
+
+# 4) 소스 안의 클래스명 치환
 grep -rl "TemplateApplication" src | xargs sed -i "s/TemplateApplication/${CLASS}Application/g"
 ```
 
@@ -98,8 +133,9 @@ Get-ChildItem -Path src -Recurse -File | ForEach-Object {
         Set-Content $_.FullName -NoNewline -Encoding utf8
 }
 
-# 3) TemplateApplication.java 를 <서비스명>Application.java 로 변경
+# 3) 클래스 파일 이름 변경 (main, test 양쪽)
 Rename-Item "src\main\java\com\pawtrail\$NEW\TemplateApplication.java" "${CLASS}Application.java"
+Rename-Item "src\test\java\com\pawtrail\$NEW\TemplateApplicationTests.java" "${CLASS}ApplicationTests.java"
 ```
 
 #### 제대로 바뀌었는지 확인
@@ -114,6 +150,13 @@ grep -r "com.pawtrail.template\|TemplateApplication" src
 ```powershell
 # PowerShell
 Select-String -Path src\*.* -Pattern "com\.pawtrail\.template|TemplateApplication" -Recurse
+```
+
+**파일 이름도 함께 확인합니다.** 위 명령은 파일 *내용*만 검사합니다. 클래스 이름은 바뀌었는데 파일 이름이 그대로 남아 있으면, 테스트 클래스는 `public` 이 아니라 컴파일은 통과하고 이름만 어긋난 채 남습니다.
+
+```bash
+# main, test 양쪽에 Template 이 들어간 파일이 없어야 합니다
+find src -name "Template*"
 ```
 
 ### 1-2. 이미 IntelliJ로 연 뒤에 바꿨다면
@@ -142,10 +185,10 @@ rootProject.name = 'place'
 
 ```properties
 # 바꾸기 전
-commonVersion=0.1.0
+commonVersion=0.0.1
 
 # 바꾸기 후 (예시)
-commonVersion=0.2.3
+commonVersion=0.0.3
 ```
 
 #### src/main/resources/application.yml
@@ -247,19 +290,21 @@ springServicePipeline(
 ```sql
 -- V20__place.sql 예시
 CREATE TABLE place (
-    id              BIGSERIAL PRIMARY KEY,
+    id              uuid         PRIMARY KEY,
     name            VARCHAR(200) NOT NULL,
     -- ... 이 서비스의 컬럼 정의
     created_at      TIMESTAMP    NOT NULL,
     created_by      VARCHAR(45)  NOT NULL,
-    updated_at      TIMESTAMP,
-    updated_by      VARCHAR(45),
+    updated_at      TIMESTAMP    NOT NULL,
+    updated_by      VARCHAR(45)  NOT NULL,
     deleted_at      TIMESTAMP,
     deleted_by      VARCHAR(45)
 );
 ```
 
-마지막 6개 컬럼은 모든 테이블이 공통으로 갖습니다. `BaseEntity`가 이 컬럼들과 짝을 이루므로 빠뜨리면 기동 시 검증에 실패합니다.
+**PK는 모든 테이블이 `uuid`입니다.** DB 함수로 만들지 않고 애플리케이션이 `@UuidGenerator(style = UuidGenerator.Style.VERSION_7)` 로 생성해 넣으므로, 스크립트에는 기본값을 지정하지 않습니다. 순차 숫자를 쓰지 않는 이유는 서비스가 여러 개라 `place_id=42` 와 `pet_id=42` 가 구분되지 않고, 순차 ID가 URL에 노출되면 데이터 규모가 드러나기 때문입니다.
+
+마지막 6개 컬럼은 모든 테이블이 공통으로 갖습니다. `BaseEntity`가 이 컬럼들과 짝을 이루므로 빠뜨리면 기동 시 검증에 실패합니다. `created_*` 와 `updated_*` 는 JPA Auditing 이 항상 채우므로 `NOT NULL` 이고, `deleted_*` 는 소프트 딜리트 시점에만 채워지므로 NULL 을 허용합니다.
 
 #### README.md
 
@@ -290,20 +335,179 @@ docker compose --profile infra --profile edge up -d
 
 ### 1-4. DB를 사용하지 않는 서비스라면
 
-verdict, congestion처럼 DB가 없는 서비스는 `<서비스명>Application.java`(예: `VerdictApplication.java`)를 열어 아래 두 줄을 지웁니다. 남겨두면 JPA가 필수가 되어 기동에 실패합니다.
+verdict, congestion 처럼 DB 가 없는 서비스는 **네 군데를 지워야 합니다.** 한 곳만 고치면 컴파일이나 기동이 실패하므로 아래 순서대로 함께 처리합니다.
 
-```java
-@EntityScan(basePackages = { ... })
-@EnableJpaRepositories(basePackages = { ... })
+> **왜 지워야 하는가** — 공통 모듈은 클래스패스에 `spring-data-jpa` 가 있으면 JPA 관련 설정을 자동으로 켭니다. DB 가 없는 서비스에서 켜지면 `entityManagerFactory` Bean 을 찾지 못해 기동에 실패합니다. 의존성을 지우면 자동 설정도 함께 꺼집니다.
+
+#### ① `build.gradle` — 데이터·QueryDSL 블록을 통째로
+
+`── 데이터 ──` 주석부터 QueryDSL 블록 끝까지가 대상입니다. **JPA 4줄만 지우면 안 됩니다.** `hibernate-spatial` 과 QueryDSL 이 `hibernate-core` 와 `jakarta.persistence-api` 를 클래스패스에 남겨, 쓰지도 않는 의존성이 이미지에 실리고 애노테이션 프로세서도 계속 돕니다.
+
+```groovy
+    // ── 웹 · 검증 · 보안 · 상태확인 ────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // ▼▼▼ 여기부터 지웁니다 ▼▼▼
+    // ── 데이터 ────────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly   'org.postgresql:postgresql'
+
+    implementation 'org.hibernate.orm:hibernate-spatial'
+
+    // ── QueryDSL ──────────────────────────────────────────────
+    implementation      "io.github.openfeign.querydsl:querydsl-jpa:${querydslVersion}"
+    annotationProcessor "io.github.openfeign.querydsl:querydsl-apt:${querydslVersion}:jpa"
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+    // ▲▲▲ 여기까지 지웁니다 ▲▲▲
+
+    // ── 캐시 · 이벤트 ─────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
 ```
 
-함께 `src/main/resources/db/migration/` 폴더와 `infrastructure/persistence/` 패키지도 지웁니다.
+테스트 블록 맨 위의 두 줄도 함께 지웁니다. 여기만 남으면 테스트 클래스패스에만 JPA 가 살아남아, 나중에 테스트가 왜 다르게 도는지 찾기 어려워집니다.
 
-### 1-5. 공통 모듈의 자동 설정 파일은 건드리지 않습니다
+```groovy
+    // ── 테스트 ────────────────────────────────────────────────
+    // ▼▼▼ 이 두 줄을 지웁니다 ▼▼▼
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
+    // ▲▲▲ 여기까지 ▲▲▲
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+```
+
+`spring-data-commons` 는 **지우지 않습니다.** 공통 모듈의 `PageResponse` 가 쓰는 것이고, DB 가 없는 서비스도 목록 응답을 반환합니다.
+
+#### ② `<서비스명>Application.java` — 애노테이션 2줄과 import 2줄
+
+**애노테이션만 지우고 import 를 남기면 컴파일이 실패합니다.** `package org.springframework.data.jpa.repository.config does not exist` 오류가 나는데, 원인이 애노테이션 쪽이라고 생각하기 쉬워 시간을 씁니다.
+
+```java
+package com.pawtrail.verdict;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;              // ← 지웁니다
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;       // ← 지웁니다
+
+/**
+ * ... 주석의 JPA 관련 문단도 함께 정리합니다 ...
+ */
+@SpringBootApplication
+@EntityScan(basePackages = {"com.pawtrail.verdict", "com.pawtrail.common"})         // ← 지웁니다
+@EnableJpaRepositories(basePackages = {"com.pawtrail.verdict", "com.pawtrail.common"})  // ← 지웁니다
+public class VerdictApplication {
+```
+
+지우고 나면 이 형태만 남습니다.
+
+```java
+@SpringBootApplication
+public class VerdictApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(VerdictApplication.class, args);
+    }
+}
+```
+
+#### ③ `src/main/resources/application.yml` — DB 관련 블록 3개
+
+```yaml
+spring:
+  application:
+    name: verdict-service
+
+  # ▼▼▼ 여기부터 지웁니다 ▼▼▼
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:5432/template_db
+    username: template_user
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/common,classpath:db/migration
+  # ▲▲▲ 여기까지 지웁니다 ▲▲▲
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+```
+
+맨 아래 `app.outbox.relay.enabled` 도 지웁니다. outbox 테이블이 없으므로 회수 스케줄러가 돌 대상이 없습니다. `app.auditor.system-name` 은 남겨도 무방하지만, 감사 컬럼을 쓸 엔티티가 없으므로 함께 지우는 편이 깔끔합니다.
+
+#### ④ 폴더 2개
+
+```
+src/main/resources/db/migration/          ← 폴더째 지웁니다 (테이블이 없습니다)
+src/main/java/.../infrastructure/persistence/   ← 폴더째 지웁니다 (저장소가 없습니다)
+```
+
+#### 다 지웠는지 확인
+
+아래가 **아무것도 출력하지 않으면** 성공입니다.
+
+```bash
+# macOS / Git Bash
+grep -rn "jpa\|Jpa\|flyway\|Flyway\|querydsl\|QueryDsl\|datasource" build.gradle src/main/resources/application.yml src/main/java
+```
+
+```powershell
+# PowerShell
+Select-String -Path build.gradle, src\main\resources\application.yml -Pattern "jpa|flyway|querydsl|datasource"
+```
+
+그다음 빌드가 통과하는지 봅니다.
+
+```bash
+./gradlew compileJava
+```
+
+#### 무상태 서비스가 못 쓰게 되는 것
+
+의존성을 지우면 공통 모듈에서 아래가 함께 꺼집니다. 대신 쓸 수 없게 되는 것이므로 알고 있어야 합니다.
+
+| 못 쓰게 되는 것 | 대신 |
+|---|---|
+| `BaseEntity`, JPA Auditing | 엔티티가 없으므로 필요 없습니다 |
+| `OutboxEventRecorder` (이벤트 발행) | 무상태 서비스는 이벤트를 발행하지 않습니다 |
+| `InboxProcessor` (중복 처리 방지) | 8장 마지막 절을 참고합니다. 이 서비스들이 이벤트로 하는 일은 캐시 삭제뿐이라 중복 처리가 문제되지 않습니다 |
+
+`CommonApiResponse`·`ErrorCode`·`@CurrentUser`·보안 필터는 **그대로 쓸 수 있습니다.** JPA 와 무관한 자동 설정이라 계속 켜집니다.
+
+### 1-5. 공통 모듈은 자동 설정으로 등록됩니다
 
 공통 모듈에는 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 파일이 있어 설정 클래스들이 자동으로 등록됩니다. 이 파일은 **공통 모듈 레포에만 존재하며, 서비스 레포에서는 만들지도 고치지도 않습니다.**
 
-서비스 쪽에서 필요한 것은 `<서비스명>Application.java`의 `scanBasePackages`에 `com.pawtrail.common`을 함께 지정하는 것뿐이고, 이는 템플릿에 이미 들어 있습니다. 여기에 같은 이름의 파일을 새로 만들면 설정이 두 번 등록되어 빈 충돌이 발생할 수 있습니다.
+서비스 쪽에서 **따로 해야 할 일은 없습니다.** 의존성만 추가하면 조건에 맞는 Bean 이 알아서 올라옵니다.
+
+#### `scanBasePackages` 에 `com.pawtrail.common` 을 넣지 않습니다
+
+**넣으면 안 됩니다.** 자동 설정과 컴포넌트 스캔 양쪽에 걸리면 같은 설정이 두 번 등록되고, 조건 평가 순서가 깨져 의도와 다른 Bean 이 올라갈 수 있습니다. 스프링 부트도 자동 설정 클래스가 컴포넌트 스캔 대상이 되면 안 된다고 명시하고 있습니다.
+
+템플릿의 `<서비스명>Application.java` 에는 `scanBasePackages` 자체가 없습니다. `@SpringBootApplication` 의 기본 스캔 범위가 그 클래스가 속한 패키지이므로 지정할 필요가 없고, 복제 후 고칠 문자열도 하나 줄어듭니다.
+
+#### 반면 `@EntityScan` 과 `@EnableJpaRepositories` 에는 넣습니다
+
+공통 모듈의 `OutboxMessage`·`ProcessedEvent` 엔티티와 그 레포지터리는 **자동 설정이 잡아주지 않습니다.** 이 둘에는 `com.pawtrail.common` 을 그대로 지정해야 하며, 템플릿에 이미 들어 있습니다.
+
+세 애노테이션이 비슷하게 생겼지만 공통 모듈이 들어가는 곳은 뒤의 둘뿐입니다. 헷갈리기 쉬운 자리라 앱 클래스 주석에도 같은 설명이 있습니다.
 
 ### 1-6. 마지막으로 빌드가 되는지 확인합니다
 
@@ -343,10 +547,10 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
 
 | 표시되는 곳 | 이유 |
 |---|---|
-| `TemplateApplication.java` 의 `com.pawtrail.common` | 공통 모듈이 아직 의존성에 없어서입니다. 3장에 따라 공통 모듈을 연결하면 사라집니다 |
+| `<서비스명>Application.java` 의 `@EntityScan`·`@EnableJpaRepositories` 안에 있는 `com.pawtrail.common` | 공통 모듈이 아직 의존성에 없어서입니다. 3장에 따라 공통 모듈을 연결하면 사라집니다 |
 | `application.yml` 의 `app.auditor.system-name`, `app.outbox.relay.enabled` | 이 프로젝트가 직접 정의한 프로퍼티라 스프링이 아는 목록에 없어서입니다. 공통 모듈에 설정 클래스가 추가되면 사라집니다 |
 
-`scanBasePackages` 와 `@EntityScan` 은 문자열을 받으므로, 해당 패키지가 실제로 없어도 컴파일과 기동이 정상적으로 이루어집니다.
+`@EntityScan` 과 `@EnableJpaRepositories` 의 `basePackages` 는 **문자열을 받습니다.** 컴파일러 입장에서는 일반 문자열과 다를 것이 없으므로, 해당 패키지가 실제로 없어도 컴파일과 기동이 정상적으로 이루어집니다. 런타임에 스캔했을 때 아무것도 찾지 못하고 끝날 뿐입니다.
 
 ---
 
@@ -415,7 +619,7 @@ Compose 파일은 이 레포가 아니라 infra 레포에 있습니다. Redis �
 | pet | 8083 | | route | 8091 |
 | place | 8084 | | report | 8092 |
 | policy | 8085 | | notification | 8093 |
-| verdict | 8086 | | | |
+| verdict | 8086 | | review | 8094 |
 | search | 8087 | | | |
 | ingest | 8088 | | | |
 
@@ -499,7 +703,7 @@ GitHub Packages는 공개 저장소라도 내려받을 때 인증을 요구합�
 
 ```properties
 # gradle.properties
-commonVersion=0.1.0
+commonVersion=0.0.1
 
 # 라이브러리 버전도 같은 곳에서 관리합니다
 querydslVersion=7.6
@@ -580,7 +784,7 @@ cp .env.example .env
 
 | 키 | 두는 곳 | 값 | 무엇을 하는가 |
 |---|---|---|---|
-| `commonVersion` | 레포 안 `gradle.properties` | 예: `0.1.0` | 공통 모듈 버전 |
+| `commonVersion` | 레포 안 `gradle.properties` | 예: `0.0.3` | 공통 모듈 버전 |
 | `GPR_USER` / `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
 | `DB_HOST` | 환경변수 (`.env`) | 개발용 PostgreSQL 주소 | 팀 공용 EC2의 주소입니다. 인스턴스를 재생성하면 바뀌므로 각자 이 값만 고칩니다 |
 | `DB_PASSWORD` | 환경변수 (`.env`) | 서비스 계정 비밀번호 | 절대 커밋하지 않습니다 |
@@ -639,154 +843,394 @@ cp .env.example .env
 
 > 공통 모듈을 고치면 이를 사용하는 모든 서비스가 버전을 올려야 합니다. 따라서 "여러 곳에서 쓰인다"만으로는 부족하고 "앞으로 거의 바뀌지 않는다"까지 만족해야 넣습니다.
 
+### 자동 설정 6개
+
+`config/` 패키지의 6개 클래스가 `AutoConfiguration.imports` 에 등록되어 있습니다. 서비스는 의존성만 추가하면 조건에 맞는 것이 올라옵니다.
+
+| 클래스 | 켜지는 조건 | 등록하는 Bean |
+|---|---|---|
+| `CommonWebAutoConfiguration` | 서블릿 웹 + spring-webmvc | `GlobalExceptionHandler`, `TraceIdResponseAdvice` |
+| `CommonSecurityAutoConfiguration` | 서블릿 웹 + spring-security | `SecurityFilterChain`(관리자 경로 보호 포함), `CustomSecurityExceptionHandler` |
+| `CommonJpaAutoConfiguration` | spring-data-jpa | `AuditorProvider`, JPA Auditing 활성화 |
+| `CommonMessagingAutoConfiguration` | spring-data-jpa + spring-kafka | `OutboxEventRecorder`, `OutboxPublisher`, `OutboxCommitListener`, `OutboxRelay`, `InboxProcessor` |
+| `CommonKafkaAutoConfiguration` | spring-kafka | `RecordMessageConverter`, `KafkaSecurityInterceptor`, `DefaultErrorHandler` |
+| `CommonAsyncAutoConfiguration` | 없음 | `@EnableAsync` |
+
+조건 판단에 `jakarta.persistence.EntityManager` 가 아니라 `org.springframework.data.jpa.repository.JpaRepository` 를 쓰는 이유는, `hibernate-spatial` 이 `hibernate-core` 를 거쳐 `jakarta.persistence-api` 를 전이로 끌고 오기 때문입니다. JPA 스타터를 지운 무상태 서비스에서도 `EntityManager` 는 클래스패스에 남아 조건이 참이 되어버립니다.
+
+모든 Bean 에 `@ConditionalOnMissingBean` 이 붙어 있으므로, 서비스가 같은 타입의 Bean 을 직접 정의하면 공통 모듈 쪽이 물러납니다. 로그인 경로를 열어야 하는 auth 서비스가 자체 `SecurityFilterChain` 을 정의하는 경우가 여기 해당합니다.
+
+### 패키지 구조
+
 ```
 com.pawtrail.common
 │
-├── config/                                         스프링 설정 모음
-│   ├── AsyncConfig.java (class)                    @EnableAsync를 켭니다. Outbox 커밋 리스너가
-│   │                                               @Async로 동작해야 하므로 필요합니다. 이것이 없으면
-│   │                                               카프카 발행이 메인 요청 흐름을 붙잡아 응답이 느려집니다
-│   ├── AuditConfig.java (class)                    누가 만들고 고쳤는지를 자동으로 채우는 설정입니다.
-│   │                                               AuditorAware가 SecurityContext에서 사용자 ID를 꺼내
-│   │                                               createdBy·updatedBy에 넣습니다. 인증이 없는 배치 실행
-│   │                                               시에는 app.auditor.system-name 프로퍼티 값을 씁니다.
-│   │                                               JPA를 쓰지 않는 서비스에서는 로드되지 않도록 조건부입니다
-│   ├── QueryDslConfig.java (class)                 JPAQueryFactory 빈을 등록합니다. 복잡한 조회 쿼리를
-│   │                                               자바 코드로 작성하기 위한 도구입니다.
-│   │                                               JPA를 쓰지 않는 서비스에서는 로드되지 않도록 조건부입니다
-│   ├── KafkaConsumerConfig.java (class)            이벤트를 받는 쪽 설정입니다. 카프카 헤더의 X-User-Id를
-│   │                                               SecurityContext로 복원하고, JSON을 @KafkaListener
-│   │                                               파라미터 타입으로 자동 변환하며, 분산 추적을 켭니다
-│   ├── KafkaProducerConfig.java (class)            이벤트를 보내는 쪽 설정입니다. JSON 문자열을 그대로
-│   │                                               전송하도록 하고 분산 추적을 켭니다
-│   └── RestClientConfig.java (class)               서비스 간 HTTP 호출용 RestClient 빈을 등록합니다.
-│                                                   @LoadBalanced를 붙여 유레카에 등록된 서비스 이름
-│                                                   (예: http://policy-service)으로 호출할 수 있게 하고,
-│                                                   인증 헤더 인터셉터를 끼웁니다
+├── config/                                         자동 설정 6개. 조건과 Bean 정의가 모두 여기 모입니다.
+│   ├── CommonWebAutoConfiguration.java (class)     자동 설정 클래스는 컴포넌트 스캔에 걸리면 안 되는
+│   ├── CommonSecurityAutoConfiguration.java        특수한 부류라 한 폴더에 격리해 둡니다
+│   ├── CommonJpaAutoConfiguration.java
+│   ├── CommonMessagingAutoConfiguration.java
+│   ├── CommonKafkaAutoConfiguration.java
+│   └── CommonAsyncAutoConfiguration.java
 │
 ├── entity/
 │   └── BaseEntity.java (abstract class)            모든 테이블이 상속하는 공통 컬럼 묶음입니다.
 │                                                   createdAt·createdBy, updatedAt·updatedBy,
-│                                                   deletedAt·deletedBy를 가집니다. 소프트 딜리트를 쓰므로
-│                                                   실제 DELETE를 하지 않고 deletedAt에 시각을 기록합니다.
-│                                                   NULL이면 살아있는 행입니다
+│                                                   deletedAt·deletedBy 를 가집니다. 소프트 딜리트를 쓰므로
+│                                                   실제 DELETE 를 하지 않고 deletedAt 에 시각을 기록합니다.
+│                                                   NULL 이면 살아있는 행입니다.
+│                                                   시각은 전부 LocalDateTime 이며 DB 컬럼은 timestamp 입니다
 │
 ├── audit/
 │   └── AuditorProvider.java (class)                "지금 이 작업을 하는 주체가 누구인가"를 한 곳에서
-│                                                   알려줍니다. 삭제 시 deletedBy에 넣을 값을 여기서 얻습니다.
-│                                                   생성·수정은 JPA가 자동으로 채우는데 삭제만 수동이므로,
-│                                                   값의 출처가 갈리지 않도록 두는 장치입니다
+│                                                   알려줍니다. 삭제 시 deletedBy 에 넣을 값을 여기서 얻습니다.
+│                                                   생성·수정은 JPA 가 자동으로 채우는데 삭제만 수동이므로,
+│                                                   값의 출처가 갈리지 않도록 두는 장치입니다.
+│                                                   인증이 없으면 app.auditor.system-name 값을 씁니다
 │
 ├── enums/
-│   └── Role.java (enum)                            USER / ADMIN. 게이트웨이가 X-User-Role로 주입하는
+│   └── Role.java (enum)                            USER / ADMIN. 게이트웨이가 X-User-Role 로 주입하는
 │                                                   값입니다
 │
 ├── exception/
 │   ├── ErrorCode.java (interface)                  에러 코드가 가져야 할 모양만 정의합니다.
-│   │                                               name, HTTP 상태, 코드 문자열, 메시지로 구성되며
-│   │                                               각 서비스가 자기 enum으로 구현합니다
+│   │                                               getHttpStatus, getCode, getMessage 세 개이며
+│   │                                               각 서비스가 자기 enum 으로 구현합니다.
+│   │                                               getCode() 는 반드시 name() 을 그대로 반환합니다.
+│   │                                               상수 이름이 곧 응답 code 이자 API 계약인데
+│   │                                               규칙을 어겨도 컴파일러가 잡지 못합니다
 │   ├── CommonErrorCode.java (enum)                 모든 서비스에서 같은 뜻으로 쓰이는 에러만 담습니다.
-│   │                                               VALIDATION_FAILED, UNAUTHORIZED, FORBIDDEN,
-│   │                                               INTERNAL_SERVER_ERROR 등입니다
-│   ├── CustomException.java (class)                의도적으로 던지는 모든 예외입니다. ErrorCode를 하나
+│   │                                               VALIDATION_FAILED(400)
+│   │                                               AUTHENTICATION_FAILED(401)
+│   │                                               ACCESS_DENIED(403)
+│   │                                               INTERNAL_ERROR(500)
+│   │                                               EXTERNAL_API_ERROR(502)
+│   ├── CustomException.java (class)                의도적으로 던지는 모든 예외입니다. ErrorCode 를 하나
 │   │                                               물고 있으며, 핸들러가 거기서 HTTP 상태와 메시지를 꺼냅니다.
 │   │                                               예외 클래스를 상태별로 나누지 않는 이유는, 상태값이 이미
-│   │                                               ErrorCode에 있어 클래스가 두 번째 진실의 원천이 되면
+│   │                                               ErrorCode 에 있어 클래스가 두 번째 진실의 원천이 되면
 │   │                                               둘이 어긋나도 아무도 알아채지 못하기 때문입니다
 │   └── handler/
 │       └── GlobalExceptionHandler.java (class)
 │                                                   모든 예외를 잡아 응답 형식으로 바꾸는 곳입니다.
 │                                                   핸들러는 4개입니다.
-│                                                   (1) CustomException → ErrorCode의 상태로 응답
+│                                                   (1) CustomException → ErrorCode 의 상태로 응답
 │                                                   (2) MethodArgumentNotValidException(@Valid 실패)
-│                                                       → 400과 함께 필드별 오류 배열 반환
+│                                                       → 400 과 함께 필드별 오류 배열 반환
 │                                                   (3) MethodArgumentTypeMismatchException
-│                                                       (/places/abc처럼 타입 불일치) → 400
+│                                                       (/places/abc 처럼 타입 불일치) → 400
 │                                                   (4) Exception → 500
+│                                                   401·403 은 여기로 오지 않습니다. 시큐리티 필터가
+│                                                   DispatcherServlet 앞에 있어 아래 핸들러가 처리합니다
 │
 ├── message/                                        이벤트 발행·수신의 뼈대
-│   ├── DomainEvent.java (interface)                이벤트임을 표시하는 표식입니다. 내용은 없고
-│   │                                               타입 제약 용도입니다
+│   ├── DomainEvent.java (interface)                발행할 이벤트가 구현하는 계약입니다.
+│   │                                               getTopic, getAggregateType, getAggregateId 세 개이며
+│   │                                               셋 다 @JsonIgnore 라 payload 에는 나가지 않습니다.
+│   │                                               이벤트가 자기 라우팅 정보를 들고 다니므로 발행할 때
+│   │                                               토픽을 따로 넘기지 않습니다
 │   ├── EventEnvelope.java (record)                 모든 이벤트를 감싸는 봉투입니다. eventId(중복 판단 키),
-│   │                                               eventType, aggregateId, occurredAt, payload로 구성됩니다.
-│   │                                               봉투는 공통에 두지만 payload 안쪽 DTO는 각 서비스가
-│   │                                               따로 정의합니다. 결합을 피하기 위함입니다
-│   ├── CommonKafkaEventPublisher.java (class)
-│   │                                               서비스가 이벤트를 발행할 때 호출하는 입구입니다.
-│   │                                               카프카로 바로 보내지 않고 outbox 테이블에 저장합니다.
-│   │                                               이때 SecurityContext의 사용자 정보와 traceId를 함께
-│   │                                               저장합니다. 나중에 별도 스레드가 발행할 시점에는
-│   │                                               요청 컨텍스트가 이미 사라지기 때문입니다
+│   │                                               eventType, occurredAt, aggregateType, aggregateId,
+│   │                                               data 로 구성됩니다.
+│   │                                               봉투는 공통에 두지만 data 안쪽 DTO 는 각 서비스가
+│   │                                               따로 정의합니다. 결합을 피하기 위함입니다.
+│   │                                               제네릭에 타입 제약이 없어 받는 쪽 DTO 는
+│   │                                               DomainEvent 를 구현하지 않아도 됩니다
+│   ├── AuthContextHeaders.java (final class)       X-User-Id·X-User-Role 헤더 키의 단일 출처입니다.
+│   │                                               HTTP 필터, 서비스 간 호출 인터셉터, 카프카 인터셉터가
+│   │                                               같은 문자열을 각자 들고 있으면 어긋나도 알 수 없습니다
+│   ├── KafkaSecurityInterceptor.java (class)       소비 시 카프카 헤더를 SecurityContext 로 복원합니다.
+│   │                                               컨슈머는 HTTP 요청 밖 스레드에서 실행되어 컨텍스트가
+│   │                                               비어 있고, 복원하지 않으면 컨슈머가 만든 행의
+│   │                                               createdBy 가 전부 SYSTEM 으로 남습니다.
+│   │                                               traceparent 는 다루지 않습니다. 스프링 카프카
+│   │                                               Observation 이 처리하며 직접 넣으면 헤더가 중복됩니다
 │   │
-│   ├── outbox/                                     "DB에는 저장됐는데 이벤트는 나가지 않았다"를 막는 장치
-│   │   ├── OutboxMessage.java (entity)             발행 대기 중인 이벤트 한 건입니다. 비즈니스 데이터와
-│   │   │                                           같은 트랜잭션으로 저장되므로 둘 다 되거나 둘 다 안 됩니다
-│   │   ├── OutboxStatus.java (enum)                INIT(대기) / PUBLISHED(발행 완료) / FAILED
+│   ├── outbox/                                 "DB에는 저장됐는데 이벤트는 나가지 않았다"를 막는 장치
+│   │   ├── OutboxMessage.java (entity)         발행 대기 중인 이벤트 한 건입니다. 비즈니스 데이터와
+│   │   │                                       같은 트랜잭션으로 저장되므로 둘 다 되거나 둘 다 안 됩니다
 │   │   ├── OutboxRepository.java (interface)
-│   │   │                                           미발행 건을 조회합니다. 같은 aggregateId에 대해
-│   │   │                                           앞선 미발행 건이 있는지도 확인해 순서를 보장합니다
-│   │   ├── OutboxInternalEvent.java (class)        스프링 내부 신호입니다. "커밋이 끝났으니 발행하라"
+│   │   │                                       미발행 건을 조회합니다. 같은 aggregateId 에 대해
+│   │   │                                       앞선 미발행 건이 있는지도 확인해 순서를 보장합니다.
+│   │   │                                       재시도 10회를 넘긴 건은 조회에서 제외합니다.
+│   │   │                                       영구 실패 한 건이 뒤 메시지를 전부 막기 때문입니다
+│   │   ├── OutboxEventRecorder.java (class)    ★서비스가 호출하는 발행 입구입니다.
+│   │   │                                       record(이벤트) 한 줄로 봉투 생성·직렬화·행 저장·
+│   │   │                                       커밋 후 발행 신호까지 처리합니다.
+│   │   │                                       전파 속성이 MANDATORY 라 트랜잭션 없이 부르면
+│   │   │                                       즉시 예외가 납니다. 비즈니스 데이터와 같은
+│   │   │                                       트랜잭션이어야 Outbox 가 성립하기 때문입니다
+│   │   ├── OutboxPublisher.java (class)        실제 카프카 전송과 상태 기록의 단일 지점입니다.
+│   │   │                                       건당 독립 트랜잭션이라 한 건이 실패해도 앞서 성공한
+│   │   │                                       건의 상태 갱신은 유지됩니다
 │   │   ├── OutboxCommitListener.java (class)
-│   │   │                                           트랜잭션 커밋 직후 비동기로 발행을 시작합니다.
-│   │   │                                           정상 경로는 여기서 처리되므로 지연이 거의 없습니다
-│   │   ├── OutboxMessageProcessor.java (class)
-│   │   │                                           실제 카프카 발행을 수행합니다. 저장해둔 사용자 정보를
-│   │   │                                           X-User-Id 등 헤더로 복원하고 상태를 PUBLISHED로 바꿉니다
-│   │   └── OutboxRelay.java (class)                놓친 건을 회수하는 안전망 스케줄러입니다(10초 주기).
-│   │                                               @ConditionalOnProperty로 한 인스턴스에서만 실행합니다.
-│   │                                               여러 인스턴스가 동시에 돌면 같은 행을 집어
-│   │                                               순서 보장 로직이 깨지기 때문입니다
+│   │   │                                       커밋 직후 비동기로 발행을 시작합니다.
+│   │   │                                       정상 경로는 여기서 처리되므로 지연이 거의 없습니다
+│   │   └── OutboxRelay.java (class)            놓친 건을 회수하는 안전망 스케줄러입니다(5초 주기).
+│   │                                           app.outbox.relay.enabled 로 한 인스턴스에서만
+│   │                                           실행합니다. 여러 인스턴스가 동시에 돌면 서로
+│   │                                           "앞에 미발행 건이 없다"고 판단해 순서 보장이 깨집니다
 │   │
-│   └── inbox/                                      "같은 이벤트를 두 번 처리했다"를 막는 장치
-│       ├── InboxMessage.java (entity)              처리한 eventId 기록입니다. UNIQUE 제약이
-│       │                                           최후의 방어선입니다
-│       ├── InboxRepository.java (interface)        해당 eventId를 이미 처리했는지 조회합니다
-│       └── InboxProcessor.java (class)             processOnce(eventId, 로직) 형태로 사용합니다.
-│                                                   기록과 비즈니스 로직을 한 트랜잭션으로 묶어
-│                                                   "처리했다고 기록했는데 실제로는 실패"를 막습니다
+│   └── inbox/                                  "같은 이벤트를 두 번 처리했다"를 막는 장치
+│       ├── ProcessedEvent.java (entity)        처리한 eventId 기록입니다. PK 충돌 자체가 멱등 장치라
+│       │                                       별도 조회가 필요 없습니다.
+│       │                                       ID 가 발행자에게서 온 값이라 Persistable 을 구현해
+│       │                                       항상 persist 가 나가게 합니다. 그러지 않으면 merge 가
+│       │                                       호출되어 PK 충돌 없이 UPDATE 로 흘러갑니다
+│       ├── ProcessedEventRepository.java (interface)
+│       │                                       existsById 와 save 만 사용합니다
+│       └── InboxProcessor.java (class)         processOnce(eventId, topic, 로직) 형태로 사용합니다.
+│                                               기록과 비즈니스 로직을 한 트랜잭션으로 묶어
+│                                               "처리했다고 기록했는데 실제로는 실패"와
+│                                               "처리는 했는데 기록이 실패"를 둘 다 막습니다
 │
 ├── response/
 │   ├── CommonApiResponse.java (class)              모든 API 응답의 겉껍데기입니다.
 │   │                                               { code, message, data, traceId }
-│   │                                               traceId는 성공 응답에도 싣습니다. 문의가 들어왔을 때
-│   │                                               해당 요청을 분산 추적에서 바로 찾기 위함입니다
-│   └── PageResponse.java (record)                  목록 응답에서 data 안에 들어가는 형태입니다.
-│                                                   { content: [...], page: { number, size,
-│                                                     totalElements, totalPages } }
-│                                                   총 건수 표시와 offset 페이징에 필요합니다
+│   │                                               성공은 code 가 SUCCESS 입니다
+│   ├── PageResponse.java (record)                  목록 응답에서 data 안에 들어가는 형태입니다.
+│   │                                               { content: [...], page: { number, size,
+│   │                                                 totalElements, totalPages } }
+│   │                                               from(Page, 변환함수) 로 만들며 엔티티를 그대로
+│   │                                               노출하지 않게 합니다
+│   └── TraceIdResponseAdvice.java (class)          응답 직전에 traceId 를 채웁니다. 컨트롤러가 신경 쓸
+│                                                   필요가 없고, 성공 응답에도 실립니다. 문의가 들어왔을 때
+│                                                   해당 요청을 분산 추적에서 바로 찾기 위함입니다
 │
-├── security/
-│   ├── config/SecurityConfig.java (class)          스프링 시큐리티 기본 설정입니다
-│   ├── filter/AuthenticationFilter.java (class)
-│   │                                               게이트웨이가 넣어준 X-User-Id·X-User-Role 헤더를 읽어
-│   │                                               SecurityContext를 채웁니다. 뒤쪽 서비스는 JWT를 직접
-│   │                                               다루지 않습니다. 토큰 검증은 게이트웨이에서 이미 끝났습니다
-│   ├── interceptor/
-│   │   ├── RestClientAuthInterceptor.java (class)
-│   │   │                                           서비스가 다른 서비스를 호출할 때 X-User-Id를 헤더에
-│   │   │                                           실어줍니다. 이것이 없으면 호출받은 쪽이 요청자를 알 수
-│   │   │                                           없어 감사 컬럼이 시스템 계정으로 기록됩니다.
-│   │   │                                           traceparent는 넣지 않습니다. 분산 추적 라이브러리가
-│   │   │                                           자동 처리하며, 직접 넣으면 트레이스가 갈라집니다
-│   │   └── KafkaSecurityInterceptor.java (class)
-│   │                                               카프카 헤더의 사용자 정보를 SecurityContext로
-│   │                                               복원합니다. 컨슈머는 HTTP 요청 밖에서 실행되어
-│   │                                               컨텍스트가 비어 있습니다
-│   ├── principal/CustomUserPrincipal.java (class)
-│   │                                               SecurityContext에 담기는 사용자 정보 객체입니다
-│   └── annotation/CurrentUser.java (annotation)
-│                                                   컨트롤러에서 사용자를 주입받는 애노테이션입니다
-│
-└── src/main/resources/
-    ├── META-INF/spring/
-    │   └── org.springframework.boot.autoconfigure.AutoConfiguration.imports
-    │                                               위 config들을 자동 설정으로 등록합니다.
-    │                                               조건부 로딩과 짝이 되며, 이 방식을 쓰면 서비스의
-    │                                               컴포넌트 스캔 범위와 무관하게 로드됩니다
-    └── db/migration/common/
-        ├── V1__outbox.sql                          outbox 테이블입니다. 공통이므로 V1~V19 대역을 씁니다
-        └── V2__inbox.sql                           inbox 테이블입니다
+└── security/
+    ├── filter/HeaderAuthenticationFilter.java (class)
+    │                                               게이트웨이가 넣어준 X-User-Id·X-User-Role 헤더를 읽어
+    │                                               SecurityContext 를 채웁니다. 뒤쪽 서비스는 JWT 를 직접
+    │                                               다루지 않습니다. 토큰 검증은 게이트웨이에서 끝났습니다.
+    │                                               Bean 이 아니라 SecurityConfig 에서 직접 생성합니다.
+    │                                               Bean 으로 두면 서블릿 전역 필터에도 등록돼 두 번 돕니다
+    ├── handler/CustomSecurityExceptionHandler.java (class)
+    │                                               401·403 을 공통 응답 형식으로 반환합니다.
+    │                                               시큐리티 필터는 DispatcherServlet 앞이라
+    │                                               GlobalExceptionHandler 가 잡지 못합니다.
+    │                                               이것이 없으면 인증 실패만 응답 형태가 달라집니다
+    ├── interceptor/RestClientAuthInterceptor.java (class)
+    │                                               서비스가 다른 서비스를 호출할 때 X-User-Id 를 헤더에
+    │                                               실어줍니다. 이것이 없으면 호출받은 쪽이 요청자를 알 수
+    │                                               없어 감사 컬럼이 시스템 계정으로 기록됩니다.
+    │                                               traceparent 는 넣지 않습니다. 분산 추적 라이브러리가
+    │                                               자동 처리하며, 직접 넣으면 트레이스가 갈라집니다.
+    │                                               ※ 아직 RestClient.Builder 에 연결되어 있지 않습니다.
+    │                                                 서비스 간 호출을 처음 구현할 때 연결 방식을 정합니다
+    ├── principal/CustomUserPrincipal.java (record)
+    │                                               SecurityContext 에 담기는 사용자 정보입니다.
+    │                                               accountId(UUID) 와 role(Role) 둘만 가집니다
+    └── annotation/CurrentUser.java (annotation)
+                                                    컨트롤러에서 사용자를 주입받는 애노테이션입니다
+
+src/main/resources/
+├── META-INF/spring/
+│   └── org.springframework.boot.autoconfigure.AutoConfiguration.imports
+│                                                   위 config 6개를 자동 설정으로 등록합니다.
+│                                                   이 파일이 jar 에 들어가지 않으면 아무 Bean 도
+│                                                   올라오지 않는데 오류는 나지 않습니다
+└── db/migration/common/
+    ├── V1__outbox.sql                              outbox 테이블입니다. 공통이므로 V1~V19 대역을 씁니다
+    └── V2__inbox.sql                               processed_event 테이블입니다
 ```
+
+### 공통 모듈 사용법
+
+무엇이 들어 있는지보다 **어떻게 쓰는지**가 먼저 필요합니다. 자주 쓰는 6가지를 코드로 정리합니다.
+
+#### 1) 응답 감싸기 — `CommonApiResponse`
+
+컨트롤러의 반환 타입을 `CommonApiResponse<T>` 로 감쌉니다. `traceId` 는 응답 직전에 자동으로 채워지므로 신경 쓰지 않습니다.
+
+```java
+@GetMapping("/api/v1/places/{placeId}")
+public CommonApiResponse<PlaceResponse> getPlace(@PathVariable UUID placeId) {
+    return CommonApiResponse.success(placeService.getPlace(placeId));
+}
+```
+
+```json
+{ "code": "SUCCESS", "message": "...", "data": { ... }, "traceId": "a1b2c3..." }
+```
+
+목록은 `PageResponse` 를 함께 씁니다. **엔티티를 그대로 넘기지 않도록** 변환 함수를 인자로 줍니다.
+
+```java
+@GetMapping("/api/v1/places")
+public CommonApiResponse<PageResponse<PlaceResponse>> getPlaces(Pageable pageable) {
+    Page<Place> page = placeService.search(pageable);
+    return CommonApiResponse.success(PageResponse.from(page, PlaceResponse::from));
+}
+```
+
+#### 2) 예외 던지기 — `ErrorCode` + `CustomException`
+
+먼저 이 서비스의 에러 코드 enum 을 만듭니다. `domain/exception/` 에 둡니다.
+
+```java
+@Getter
+@RequiredArgsConstructor
+public enum PlaceErrorCode implements ErrorCode {
+
+    PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "장소를 찾을 수 없습니다."),
+    PLACE_ALREADY_CLOSED(HttpStatus.CONFLICT, "이미 폐업 처리된 장소입니다.");
+
+    private final HttpStatus httpStatus;
+    private final String message;
+
+    @Override
+    public String getCode() {
+        return name();       // ★반드시 name() 을 그대로 반환합니다
+    }
+}
+```
+
+던질 때는 `CustomException` 하나만 씁니다. 예외 클래스를 상태별로 만들지 않습니다.
+
+```java
+Place place = placeRepository.findById(placeId)
+        .orElseThrow(() -> new CustomException(PlaceErrorCode.PLACE_NOT_FOUND));
+```
+
+`GlobalExceptionHandler` 가 받아서 이렇게 내보냅니다. 컨트롤러에 `try-catch` 를 쓰지 않습니다.
+
+```
+HTTP/1.1 404 Not Found
+{ "code": "PLACE_NOT_FOUND", "message": "장소를 찾을 수 없습니다.", "data": null, "traceId": "..." }
+```
+
+> **enum 상수 이름이 곧 API 계약입니다.** 프론트엔드가 `code` 값으로 분기하므로, 이름을 바꾸면 컴파일러가 잡아주지 않는 계약 변경이 됩니다.
+
+#### 3) 로그인한 사용자 꺼내기 — `@CurrentUser`
+
+```java
+@GetMapping("/api/v1/pets")
+public CommonApiResponse<List<PetResponse>> getMyPets(@CurrentUser CustomUserPrincipal principal) {
+    return CommonApiResponse.success(petService.findByAccount(principal.accountId()));
+}
+```
+
+`CustomUserPrincipal` 은 `accountId(UUID)` 와 `role(Role)` 둘만 가집니다. 게이트웨이가 헤더로 넣어준 값이라 **토큰을 파싱하는 코드를 서비스에 두지 않습니다.**
+
+기본 보안 체인의 규칙은 세 가지입니다.
+
+| 경로 | 규칙 |
+|---|---|
+| `/internal/**`, `/actuator/**` | 인증 없이 허용 |
+| **`/api/v1/admin/**`** | **`ADMIN` 역할만 허용** |
+| 그 외 전부 | 인증 필수 |
+
+관리자 API 를 공통 모듈에서 막는 이유는 **관리자 기능이 여러 서비스에 흩어져 있기 때문입니다.** 제보 처리는 report, 조건 정정은 policy, 폐업 처리는 place, 재색인은 search 에 있습니다. 각 서비스가 알아서 막게 하면 **한 곳만 빠뜨려도 그 서비스가 그대로 열립니다.**
+
+`hasRole("ADMIN")` 이 동작하는 것은 `HeaderAuthenticationFilter` 가 권한을 `"ROLE_" + role` 형태로 만들기 때문입니다. 접두사 규칙을 바꾸면 관리자 경로가 **403 만 반환하고 원인이 드러나지 않으므로** 건드리지 않습니다.
+
+로그인 경로처럼 열어야 하는 곳이 있으면 그 서비스가 자기 `SecurityFilterChain` 을 정의하면 되고, 그러면 공통 모듈 쪽이 물러납니다. **다만 그 경우 관리자 경로 보호도 함께 사라지므로 직접 넣어야 합니다.**
+
+#### 4) 엔티티 만들기 — `BaseEntity`
+
+```java
+@Entity
+@Table(name = "place")
+@Getter
+@NoArgsConstructor(access = AccessType.PROTECTED)
+public class Place extends BaseEntity {
+
+    @Id
+    @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
+    private UUID id;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+}
+```
+
+`createdAt`·`createdBy`·`updatedAt`·`updatedBy` 는 JPA Auditing 이 자동으로 채웁니다. **삭제만 수동입니다.**
+
+```java
+// 실제 DELETE 를 하지 않고 deletedAt 에 시각을 기록합니다
+place.delete(auditorProvider.current());
+```
+
+`auditorProvider.current()` 를 쓰는 이유는 생성·수정과 **같은 출처의 값**을 넣기 위해서입니다. 인증이 없는 배치라면 `app.auditor.system-name` 값이 들어갑니다.
+
+#### 5) 이벤트 발행하기 — `OutboxEventRecorder`
+
+먼저 이벤트를 `domain/event/payload/` 에 정의합니다. `DomainEvent` 를 구현하면 **자기 라우팅 정보를 스스로 들고 다니게** 됩니다.
+
+```java
+public record PlaceUpdatedEvent(
+        UUID placeId,
+        String name,
+        int version
+) implements DomainEvent {
+
+    @Override
+    public String getTopic() {
+        return "place.updated";
+    }
+
+    @Override
+    public String getAggregateType() {
+        return "Place";
+    }
+
+    @Override
+    public String getAggregateId() {
+        return placeId.toString();
+    }
+}
+```
+
+발행은 한 줄입니다.
+
+```java
+@Transactional                                    // ★반드시 트랜잭션 안에서 부릅니다
+public void updatePlace(UUID placeId, PlaceUpdateCommand command) {
+    Place place = placeRepository.findById(placeId)
+            .orElseThrow(() -> new CustomException(PlaceErrorCode.PLACE_NOT_FOUND));
+
+    place.update(command.name());
+
+    outboxEventRecorder.record(new PlaceUpdatedEvent(placeId, place.getName(), place.getVersion()));
+}
+```
+
+`record()` 안에서 봉투 생성 → 직렬화 → `outbox` 행 저장 → 커밋 후 발행 신호까지 전부 처리합니다. 카프카를 직접 부르는 코드는 서비스에 없습니다.
+
+> **트랜잭션이 없으면 즉시 예외가 납니다.** 전파 속성이 `MANDATORY` 라 그렇습니다. 비즈니스 데이터와 `outbox` 행이 같은 트랜잭션으로 저장되어야 "둘 다 되거나 둘 다 안 된다"가 성립하기 때문입니다.
+
+#### 6) 이벤트 받기 — 소비 DTO + `InboxProcessor`
+
+**받는 쪽은 발행 서비스의 이벤트 클래스를 가져다 쓰지 않고 자기 DTO 를 정의합니다.** `infrastructure/message/kafka/consumer/dto/` 에 둡니다.
+
+```java
+@JsonIgnoreProperties(ignoreUnknown = true)       // ★필수
+public record PlaceUpdatedMessage(
+        UUID placeId,
+        String name
+) {}
+```
+
+- `@JsonIgnoreProperties` 가 없으면 **발행 쪽이 필드를 하나 추가하는 순간 이쪽이 깨지고** 두 서비스의 배포 순서가 묶입니다
+- `DomainEvent` 는 구현하지 않습니다. 받는 쪽에는 토픽·집합체 값이 의미가 없습니다
+- 실제로 쓰는 필드만 선언하면 됩니다. 위 예시는 `version` 을 받지 않습니다
+
+리스너는 봉투를 타입 그대로 받습니다. 공통 모듈의 메시지 컨버터가 파라미터 타입을 읽어 역직렬화합니다.
+
+```java
+@KafkaListener(topics = "place.updated", groupId = "${spring.application.name}")
+public void onPlaceUpdated(EventEnvelope<PlaceUpdatedMessage> envelope) {
+    inboxProcessor.processOnce(
+            envelope.eventId(),
+            envelope.eventType(),
+            () -> searchIndexService.reindex(envelope.data())
+    );
+}
+```
+
+- `topics` 문자열은 발행 쪽 `getTopic()` 이 반환하는 값과 **정확히 같아야 합니다.** 어긋나도 오류가 나지 않고 이벤트만 오지 않으므로 눈으로 확인합니다
+- `processOnce` 로 감싸면 처리 이력과 비즈니스 로직이 한 트랜잭션으로 묶여 **같은 이벤트를 두 번 받아도 한 번만 처리됩니다**
+- **예외는 잡지 않고 그대로 던집니다.** 컨슈머 밖으로 나가야 재시도와 DLQ 전송이 동작합니다. 1초부터 2배씩 3회 재시도하고, 그래도 실패하면 `{원본토픽}.dlq` 로 보낸 뒤 넘어갑니다
 
 ---
 
@@ -797,13 +1241,18 @@ com.pawtrail.common
 ```
 com.pawtrail.place
 │
-├── PlaceApplication.java (class)                   진입점입니다. 공통 모듈을 함께 스캔하도록 지정합니다.
-│                                                   @SpringBootApplication(scanBasePackages =
+├── PlaceApplication.java (class)                   진입점입니다.
+│                                                   @SpringBootApplication
+│                                                   @EntityScan(basePackages =
 │                                                       {"com.pawtrail.place", "com.pawtrail.common"})
-│                                                   @EntityScan(basePackages = { 위와 동일 })
 │                                                   @EnableJpaRepositories(basePackages = { 위와 동일 })
-│                                                   공통 모듈을 함께 지정하는 이유는 BaseEntity와
-│                                                   Outbox·Inbox 엔티티가 그쪽에 있기 때문입니다
+│
+│                                                   scanBasePackages 를 지정하지 않습니다. 기본값이
+│                                                   이 클래스가 속한 패키지이고, 공통 모듈은 자동 설정으로
+│                                                   등록되므로 스캔 대상에 넣으면 두 번 등록됩니다.
+│                                                   반면 뒤의 두 애노테이션에는 공통 모듈을 지정합니다.
+│                                                   Outbox·Inbox 엔티티와 레포지터리는 자동 설정이
+│                                                   잡아주지 않기 때문입니다
 │
 ├── presentation/                                   ── HTTP를 받는 층 ──
 │   ├── PlaceController.java (class)                /api/v1/places — 브라우저가 호출하는 공개 API입니다
@@ -863,12 +1312,23 @@ com.pawtrail.place
 │   │   └── PlaceRepositoryImpl.java (class)        위 둘을 조합해 domain의 인터페이스를 구현합니다
 │   ├── message/kafka/
 │   │   ├── consumer/
-│   │   │   └── PlaceEventConsumer.java (class)
-│   │   │                                           @KafkaListener입니다. 받은 이벤트를
-│   │   │                                           InboxProcessor.processOnce로 감싸 처리합니다
+│   │   │   ├── PlaceEventConsumer.java (class)
+│   │   │   │                                       @KafkaListener입니다. 받은 이벤트를
+│   │   │   │                                       InboxProcessor.processOnce로 감싸 처리합니다
+│   │   │   └── dto/
+│   │   │       └── PlaceIngestedMessage.java (record)
+│   │   │                                           ★받는 쪽이 직접 정의하는 소비용 DTO입니다.
+│   │   │                                           발행 서비스의 이벤트 클래스를 가져다 쓰지 않고
+│   │   │                                           실제로 쓰는 필드만 선언합니다.
+│   │   │                                           @JsonIgnoreProperties(ignoreUnknown = true)를
+│   │   │                                           반드시 붙입니다. 없으면 발행 쪽이 필드를 하나
+│   │   │                                           추가하는 순간 이쪽이 깨지고 배포 순서가 묶입니다.
+│   │   │                                           DomainEvent는 구현하지 않습니다
 │   │   └── producer/
 │   │       └── PlaceEventProducerImpl.java (class)
-│   │                                               CommonKafkaEventPublisher를 호출해 outbox에 적재합니다
+│   │                                               OutboxEventRecorder.record()를 호출해
+│   │                                               outbox에 적재합니다. 호출하는 서비스 메서드에
+│   │                                               트랜잭션이 있어야 합니다
 │   └── provider/client/
 │       ├── RawDocumentClient.java (interface)      @HttpExchange 인터페이스입니다. 다른 서비스 호출을
 │       │                                           메서드 선언만으로 정의합니다
@@ -883,8 +1343,65 @@ com.pawtrail.place
     ├── application.yml                             서비스명, 포트, DB 접속, 유레카 등록 등을 정의합니다
     └── db/migration/
         └── V20__place.sql                          서비스별 마이그레이션은 V20부터 시작합니다.
-                                                    V1~V19는 공통 모듈이 사용하는 대역입니다
+                                                    V1~V19는 공통 모듈이 사용하는 대역입니다.
+                                                    PK는 uuid이며 애플리케이션이 v7을 생성해 넣습니다
 ```
+
+
+### 요청 하나가 지나가는 길
+
+위 폴더들이 실제로 어떤 순서로 엮이는지입니다. **새 기능을 만들 때 이 순서대로 파일을 만들면 됩니다.**
+
+`POST /api/v1/places` 로 장소를 등록하는 경우입니다.
+
+```
+① presentation/request/PlaceCreateRequest.java
+   요청 바디를 받고 @Valid 로 형식을 검사합니다.
+   toCommand() 로 application 층 입력으로 바꿉니다.
+        ↓
+② presentation/PlaceController.java
+   @PostMapping 하나. 서비스를 부르고 CommonApiResponse 로 감싸 반환합니다.
+   여기에 if 문이 들어가기 시작하면 판단이 새어 나온 것입니다.
+        ↓
+③ application/dto/command/PlaceCreateCommand.java
+   서비스에 들어가는 입력입니다. 요청 DTO 와 분리하는 이유는
+   HTTP 형태가 바뀌어도 서비스 시그니처가 안 바뀌게 하기 위함입니다.
+        ↓
+④ application/service/PlaceService.java
+   @Transactional 이 붙는 자리입니다.
+   저장하고, 이벤트를 기록하고, 응답을 조립하는 순서를 정합니다.
+   "조건이 맞는지" 같은 판단은 여기서 하지 않고 domain 에 맡깁니다.
+        ↓
+⑤ domain/model/Place.java
+   데이터와 그 데이터를 바꾸는 규칙입니다. setter 대신
+   update(...) 같은 의미 있는 메서드를 둡니다.
+        ↓
+⑥ domain/repository/PlaceRepository.java
+   "저장한다"는 약속만 선언합니다. JPA 라는 단어가 나오지 않습니다.
+        ↓
+⑦ infrastructure/persistence/PlaceRepositoryImpl.java
+   위 약속을 JpaPlaceRepository·QueryDslPlaceRepository 로 구현합니다.
+        ↓
+⑧ domain/event/payload/PlaceUpdatedEvent.java
+   발행할 이벤트입니다. DomainEvent 를 구현합니다.
+        ↓
+⑨ infrastructure/message/kafka/producer/PlaceEventProducerImpl.java
+   OutboxEventRecorder.record() 를 호출합니다.
+   ④의 트랜잭션 안에서 불려야 합니다.
+        ↓
+⑩ application/dto/response/PlaceResponse.java
+   from(엔티티) 로 변환합니다. 컨트롤러가 이것을 그대로 반환합니다.
+```
+
+**막히기 쉬운 자리 3가지**
+
+| 증상 | 원인 |
+|---|---|
+| `IllegalTransactionStateException` 이 나며 이벤트 발행이 실패합니다 | ④에 `@Transactional` 이 없습니다. `OutboxEventRecorder` 는 트랜잭션 없이 부를 수 없습니다 |
+| 이벤트를 발행했는데 받는 서비스가 반응하지 않습니다 | 토픽 문자열이 어긋났거나, 받는 쪽 `groupId` 가 겹쳤습니다. Kafdrop(`tools` 프로파일)으로 토픽에 메시지가 실렸는지부터 확인합니다 |
+| 응답 JSON 에 엔티티 필드가 그대로 노출됩니다 | ⑩을 거치지 않고 엔티티를 반환했습니다. 컨트롤러 반환 타입이 `CommonApiResponse<Place>` 가 아닌지 확인합니다 |
+
+**다른 서비스를 호출해야 한다면** ⑥⑦ 대신 `domain/provider/` 에 인터페이스를, `infrastructure/provider/client/` 에 `@HttpExchange` 구현을 둡니다. 구조는 같습니다 — 약속은 `domain`, 구현은 `infrastructure` 입니다.
 
 ---
 
@@ -897,8 +1414,8 @@ com.pawtrail.verdict
 │
 ├── VerdictApplication.java (class)                 @EntityScan과 @EnableJpaRepositories를 쓰지 않습니다.
 │                                                   사용하면 JPA가 필수가 되어 기동에 실패합니다.
-│                                                   @SpringBootApplication(scanBasePackages =
-│                                                       {"com.pawtrail.verdict", "com.pawtrail.common"})
+│                                                   애노테이션과 import를 함께 지웁니다.
+│                                                   남는 것은 @SpringBootApplication 한 줄뿐입니다
 │
 ├── presentation/
 │   ├── VerdictController.java (class)              /api/v1/places/{id}/verdict — 상세 화면의 판정입니다
@@ -958,37 +1475,79 @@ InboxProcessor는 처리 이력을 DB에 남겨야 하는데 이 서비스들에
 
 ## 9. 서비스별 형태 분류
 
+도메인 서비스는 14개입니다. 플랫폼 3개를 합쳐 17개입니다.
+
 | 구분 | 서비스 | 소유 DB |
 |---|---|---|
 | **DB 있음** | auth | auth_db |
 | | user | user_db |
 | | pet | pet_db |
-| | place | place_db |
+| | place | place_db (동물병원 포함) |
 | | policy | policy_db |
 | | search | search_db (검색 색인) |
 | | ingest | raw_db |
-| | route | vet_db (동물병원) |
-| | report | report_db |
+| | report | report_db (제보) |
+| | review | review_db (방문 후기) |
 | | notification | notif_db |
 | **DB 없음** | verdict | 무상태 순수 계산 |
 | | congestion | Redis 캐시만 사용 |
+| | route | 카카오맵 경로 계산만 수행합니다 |
 | **별도 판단** | extract | 소유 DB 없이 /internal API로만 접근합니다. 다만 Spring Batch가 실행 이력 테이블을 요구하므로 이 부분만 별도로 정합니다 |
 | **다른 형태** | gateway / config / eureka | 도메인 서비스가 아니므로 4계층 구조를 따르지 않습니다 |
 
+**report 와 review 를 나눈 이유** — 제보는 쓰기 한 번에 조회는 관리자만 하는 콜드패스이고, 후기는 장소 상세를 열 때마다 조회되며 표시 방식이 자주 바뀝니다. 변경 이유와 부하 성격이 모두 다릅니다.
+
+**route 에 DB 가 없는 이유** — 동물병원이 place 로 편입되어 `vet_db` 가 사라졌습니다. 남은 일은 카카오맵 경로 계산뿐이지만, congestion 과 합치면 카카오맵 장애가 집중률까지 끊으므로 서비스는 분리해 둡니다.
+
 ### 이벤트 발행·수신 현황
+
+이벤트는 **5개뿐입니다.** 이 표가 토픽 이름의 단일 참조이므로, 발행하는 쪽과 받는 쪽이 같은 문자열을 쓰는지 여기서 확인합니다.
 
 | 서비스 | outbox (발행) | inbox (수신) |
 |---|---|---|
-| ingest | place.ingested | — |
-| place | place.updated | place.ingested |
-| policy | policy.changed | place.updated, report.submitted |
-| search | — | place.updated, policy.changed |
-| pet | pet.profile.updated | account.withdrawn |
-| report | report.submitted | account.withdrawn |
 | auth | account.withdrawn | — |
+| place | place.updated | — |
+| policy | policy.changed | — |
+| pet | pet.profile.updated | account.withdrawn |
+| report | report.reviewed | account.withdrawn |
+| review | — | account.withdrawn |
 | user | — | account.withdrawn |
-| notification | — | policy.changed, report.submitted, account.withdrawn |
+| search | — | place.updated |
+| notification | — | policy.changed, report.reviewed, account.withdrawn |
 | verdict | — | policy.changed, pet.profile.updated (inbox 미사용) |
+| ingest / extract / congestion / route | — | — |
+
+| 이벤트 | 무엇을 알리는가 | payload |
+|---|---|---|
+| `place.updated` | 장소 정보가 바뀌어 색인이 낡았습니다 | `{placeId}` |
+| `policy.changed` | 동반 조건이 바뀌어 알림 대상과 판정 캐시가 낡았습니다 | `{placeId, policyVersion, changedFields[], hasConflict}` |
+| `pet.profile.updated` | 반려동물 정보가 바뀌어 판정 캐시가 낡았습니다 | `{petId, accountId, verdictRelevantChanged}` |
+| `account.withdrawn` | 탈퇴했으므로 각자 가진 사용자 데이터를 지워야 합니다 | `{accountId}` |
+| `report.reviewed` | 제보 처리가 끝나 제보자에게 알려야 합니다 | `{reportId, accountId, status, memo}` |
+
+#### 이벤트로 만들지 않는 것
+
+같은 사실을 전달하더라도 아래에 해당하면 이벤트가 아니라 동기 호출이나 배치로 처리합니다.
+
+| 판단 기준 | 예 → 동기 호출 | 아니오 → 이벤트 |
+|---|---|---|
+| 호출자가 결과를 기다리는가 | 검색은 판정을 받아야 응답합니다 | 색인이 언제 갱신되든 무방합니다 |
+| 응답을 실제로 쓰는가 | verdict 가 policy 조건을 씁니다 | 알림은 발행자가 결과를 보지 않습니다 |
+| 실패를 즉시 알아야 하는가 | 저장이 실패하면 청크를 재시도합니다 | 나중에 재시도해도 됩니다 |
+| 상대가 죽었으면 실패해야 하는가 | policy 가 죽으면 판정이 불가합니다 | search 가 죽어도 나중에 하면 됩니다 |
+| 소비자를 알아야 하는가 | 특정 서비스를 지목해 호출합니다 | 누가 받든 상관없습니다 |
+
+한 줄로 줄이면 **"내가 무엇을 했다"가 아니라 "네가 가진 것이 낡았다"를 알리는 것만 이벤트**입니다.
+
+수집·추출 파이프라인(`ingest → place`, `extract → policy`)을 이벤트로 잇지 않는 이유도 여기에 있습니다. 청크 단위로 실패를 롤백해야 하고, **데이터 갱신은 사람의 승인을 거쳐 실행**하기로 했기 때문입니다. 이벤트로 자동 연쇄시키면 그 승인 단계가 사라집니다.
+
+#### 토픽 이름은 공통 모듈에 두지 않습니다
+
+발행하는 쪽은 `DomainEvent.getTopic()` 이 반환하고, 받는 쪽은 `@KafkaListener(topics = ...)` 에 적습니다. **같은 문자열이 두 레포에 각각 존재합니다.**
+
+공통 모듈에 상수로 두지 않는 이유는, 토픽은 개발 도중 추가·변경·삭제될 수 있는데 공통 모듈에 있으면 그때마다 재배포와 전 서비스 버전업이 필요하기 때문입니다. 공통 모듈의 기준은 "거의 바뀌지 않는 것"입니다.
+
+대신 **문자열이 어긋나면 오류 없이 이벤트만 오지 않습니다.** 위 표를 참조해 정확히 적고, 실물 확인은 Kafdrop(`tools` 프로파일, 9000 포트)에서 토픽에 메시지가 쌓였는지로 합니다.
 
 ---
 
@@ -1020,7 +1579,32 @@ Spring Boot 4 에서 코드베이스가 모듈 단위로 나뉘면서 스타터 
 
 Flyway 는 스타터로 넣어야 Hibernate 의 스키마 검증보다 먼저 실행됩니다. `flyway-core` 만 직접 넣으면 검증이 먼저 돌아 테이블이 없다는 오류가 납니다.
 
-### 10-3. Spring Cloud Gateway 아티팩트명 변경
+### 10-3. 설정 프로퍼티 경로 이동
+
+추적 관련 프로퍼티가 옮겨졌습니다. **옛 경로를 써도 오류가 나지 않고 조용히 무시됩니다.** Zipkin 을 띄웠는데 트레이스가 하나도 들어오지 않는다면 이 부분을 확인합니다.
+
+| Spring Boot 3 | Spring Boot 4 |
+|---|---|
+| `management.zipkin.tracing.endpoint` | `management.tracing.export.zipkin.endpoint` |
+
+### 10-4. 카프카 추적은 따로 켜야 합니다
+
+Spring Boot 4 의 변경점은 아니지만 같은 자리에서 막히므로 함께 적습니다. 스프링 카프카는 Observation 이 **기본으로 꺼져 있습니다.** 켜지 않으면 HTTP 구간까지는 트레이스가 이어지다가 **이벤트를 건너가는 순간 끊깁니다.** 받는 서비스는 새 트레이스를 시작하고, 오류는 나지 않습니다.
+
+```yaml
+spring:
+  kafka:
+    template:
+      observation-enabled: true
+    listener:
+      observation-enabled: true
+```
+
+프로듀서만 켜면 헤더는 실려 가지만 컨슈머가 읽지 않아 반쪽입니다. **둘 다 켭니다.** 템플릿의 `application.yml` 에 이미 들어 있습니다.
+
+Outbox 를 쓰므로 원 HTTP 요청과 발행 구간이 항상 이어지지는 않습니다. 커밋 직후 즉시 발행은 다른 스레드에서 일어나고, `OutboxRelay` 가 회수한 건은 스케줄러 스레드라 원 요청과 연결할 방법이 없습니다. Observation 이 보장하는 것은 **발행부터 소비까지**입니다.
+
+### 10-5. Spring Cloud Gateway 아티팩트명 변경
 
 게이트웨이를 다루게 될 때 필요한 내용입니다.
 
