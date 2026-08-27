@@ -18,7 +18,7 @@ repositories {
 
     // 공통 모듈(com.pawtrail:common)은 GitHub Packages에 배포됩니다.
     // 내려받으려면 GPR_USER, GPR_TOKEN 환경변수가 설정되어 있어야 합니다.
-    // 설정 방법은 README의 "공통 모듈 가져오기" 절을 참고합니다.
+    // 설정 방법은 README의 "공통 모듈 가져오기"절을 참고합니다.
     maven {
         name = "GitHubPackages"
         url = uri("https://maven.pkg.github.com/paw-trail/common")
@@ -39,6 +39,11 @@ dependencies {
     // 배포 후 아래 줄의 주석을 풀고 gradle.properties의 commonVersion을 맞춥니다.
     // implementation "com.pawtrail:common:${commonVersion}"
 
+    // 공통 모듈의 PageResponse가 org.springframework.data.domain.Page를 사용합니다.
+    // starter-data-redis가 전이로 끌어오지만 그러면 페이징이 캐시 의존성에 매달리므로
+    // 직접 선언합니다. DB를 쓰지 않는 서비스도 목록 응답을 반환하므로 이 줄은 남깁니다.
+    implementation 'org.springframework.data:spring-data-commons'
+
     // ── 웹 · 검증 · 보안 · 상태확인 ────────────────────────────
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -46,7 +51,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     // ── 데이터 ────────────────────────────────────────────────
-    // DB를 사용하지 않는 서비스(verdict, congestion)는 아래 JPA·Flyway·PostgreSQL을 제거합니다.
+    // DB를 사용하지 않는 서비스(verdict, congestion)는 여기부터 QueryDSL 블록 끝까지를
+    // 통째로 제거합니다. JPA 4줄만 지우면 hibernate-spatial과 QueryDSL이
+    // hibernate-core, jakarta.persistence-api를 클래스패스에 그대로 남겨
+    // 쓰지 않는 의존성이 이미지에 실리고 애노테이션 프로세서도 계속 돕니다.
+    // 아래 테스트 블록의 data-jpa-test, flyway-test도 함께 제거합니다.
+    // 앱 클래스의 @EntityScan, @EnableJpaRepositories도 import와 함께 제거해야 하며,
+    // 한쪽만 고치면 컴파일이 실패합니다.
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.flywaydb:flyway-database-postgresql'
@@ -84,12 +95,14 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     // ── 테스트 ────────────────────────────────────────────────
+    // DB를 사용하지 않는 서비스는 data-jpa-test, flyway-test도 함께 제거합니다.
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-zipkin-test'
