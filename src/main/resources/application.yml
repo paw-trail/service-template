@@ -44,6 +44,14 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    # 스프링 카프카는 Observation이 기본 false입니다.
+    # 켜지 않으면 이벤트를 건너가는 순간 분산 추적이 끊기고, 오류가 나지 않아
+    # 트레이스를 직접 열어보기 전까지 알 수 없습니다.
+    # 프로듀서만 켜면 헤더는 실려 가지만 컨슈머가 무시하므로 둘 다 켭니다.
+    template:
+      observation-enabled: true
+    listener:
+      observation-enabled: true
 
 server:
   port: 8080
@@ -68,9 +76,11 @@ management:
     sampling:
       # 개발 중에는 전량 추적합니다. 부하 테스트나 배포 시에는 낮춥니다.
       probability: 1.0
-  zipkin:
-    tracing:
-      endpoint: http://localhost:9411/api/v2/spans
+    export:
+      zipkin:
+        # Boot 4에서 management.zipkin.tracing.endpoint로부터 옮겨온 경로입니다.
+        # 옛 경로를 쓰면 오류 없이 무시되어 Zipkin으로 아무것도 전송되지 않습니다.
+        endpoint: http://localhost:9411/api/v2/spans
 
 app:
   auditor:
