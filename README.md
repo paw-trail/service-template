@@ -188,7 +188,7 @@ rootProject.name = 'place'
 commonVersion=0.0.1
 
 # 바꾸기 후 (예시)
-commonVersion=0.0.3
+commonVersion=0.0.4
 ```
 
 #### src/main/resources/application.yml
@@ -201,7 +201,7 @@ spring:
   application:
     name: template-service
   datasource:
-    url: jdbc:postgresql://<DB주소>:5432/template_db
+    url: jdbc:postgresql://${DB_HOST}:5432/template_db
     username: template_user
     password: ${DB_PASSWORD}
   jpa:
@@ -210,6 +210,9 @@ spring:
 server:
   port: 8080
 app:
+  logging:
+    loki:
+      url: http://localhost:3100/loki/api/v1/push
   auditor:
     system-name: SYSTEM
   outbox:
@@ -223,15 +226,18 @@ spring:
   application:
     name: place-service
   datasource:
-    url: jdbc:postgresql://<DB주소>:5432/place_db
-    username: place_user
+    url: jdbc:postgresql://${DB_HOST}:5432/place_db
+    username: place_svc
     password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
 server:
-  port: 8081
+  port: 8084
 app:
+  logging:
+    loki:
+      url: http://localhost:3100/loki/api/v1/push
   auditor:
     system-name: SYSTEM
   outbox:
@@ -240,6 +246,25 @@ app:
 ```
 
 `app.outbox.relay.enabled`는 이벤트를 발행하는 서비스에서만 `true`로 둡니다. 인스턴스를 여러 개 띄우는 서비스라면 한 인스턴스에서만 켭니다. `app.auditor.system-name`은 배치가 아닌 서비스에서는 `SYSTEM` 그대로 둡니다.
+
+DB 계정 이름은 `<서비스>_svc` 형식입니다. 포트는 2-3절의 배정표를 따릅니다.
+
+**템플릿에는 임시로 꺼 둔 설정이 둘 있습니다.** 해당 서버가 만들어지면 되돌리며, 그때까지는 그대로 둡니다.
+
+```yaml
+spring:
+  cloud:
+    config:
+      enabled: false      # config-server 가 생기면 이 블록을 걷어냅니다
+
+eureka:
+  client:
+    enabled: false        # eureka-server 가 생기면 true 로 되돌립니다
+```
+
+켠 상태로 두면 해당 서버가 없을 때 기동 자체가 실패하거나(`config`), 30초마다 접속 실패 스택트레이스가 쌓여 로그를 읽기 어렵습니다(`eureka`).
+
+`spring.profiles.default: local` 도 템플릿에 들어 있습니다. 이 값이 프로파일을 가르며 Loki 전송 여부를 결정합니다. 자세한 내용은 3-4절에 있습니다.
 
 #### Dockerfile
 
@@ -283,8 +308,8 @@ springServicePipeline(
 템플릿에 들어 있는 예시 스크립트를 지우고, 이 서비스의 첫 스크립트를 만듭니다. 파일명은 `V20__<서비스명>.sql`입니다.
 
 ```
-바꾸기 전   db/migration/V20__template.sql   (예시 내용)
-바꾸기 후   db/migration/V20__place.sql      (이 서비스의 테이블 정의)
+바꾸기 전   db/migration/service/V20__template.sql   (예시 내용)
+바꾸기 후   db/migration/service/V20__place.sql      (이 서비스의 테이블 정의)
 ```
 
 ```sql
@@ -441,7 +466,7 @@ spring:
 
   flyway:
     enabled: true
-    locations: classpath:db/migration/common,classpath:db/migration
+    locations: classpath:db/migration/common,classpath:db/migration/service
   # ▲▲▲ 여기까지 지웁니다 ▲▲▲
 
   data:
@@ -455,7 +480,7 @@ spring:
 #### ④ 폴더 2개
 
 ```
-src/main/resources/db/migration/          ← 폴더째 지웁니다 (테이블이 없습니다)
+src/main/resources/db/migration/service/  ← 폴더째 지웁니다 (테이블이 없습니다)
 src/main/java/.../infrastructure/persistence/   ← 폴더째 지웁니다 (저장소가 없습니다)
 ```
 
@@ -541,7 +566,47 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
 
 시스템 환경변수를 직접 바꿨다면 **터미널 창을 새로 열어야** 반영됩니다.
 
-### 1-7. IntelliJ 에 표시되는 경고 두 가지는 정상입니다
+### 1-7. Windows 에서 한 번만 해두는 IntelliJ 설정
+
+서비스를 만들 때마다 겪게 되므로 처음 한 번 설정해 둡니다. macOS 에서는 둘 다 해당하지 않습니다.
+
+#### 실행 시 `Command line is too long`
+
+실행하면 애플리케이션이 뜨기 전에 아래 오류가 납니다.
+
+```
+Error running 'XxxApplication'. Command line is too long.
+Shorten the command line and rerun.
+```
+
+스프링 문제가 아니라 Windows 의 명령줄 길이 제한(32,767자)에 걸린 것입니다. 의존성이 많아 클래스패스 문자열이 그 한도를 넘습니다.
+
+```
+Run/Debug Configurations → Modify options → Shorten command line → JAR manifest
+```
+
+클래스패스를 임시 jar 의 매니페스트에 넣어 명령줄에서 빼는 방식입니다.
+
+#### `.properties` 파일의 한글이 깨짐
+
+`gradle.properties` 의 한글 주석이 `?` 나 알 수 없는 문자로 보인다면 편집기 인코딩 문제입니다.
+
+```
+Settings → Editor → File Encodings
+  Default encoding for properties files      UTF-8
+  Transparent native-to-ascii conversion     체크 해제
+```
+
+**설정을 바꾸기 전에 그 파일을 저장하지 않습니다.** 두 가지 상태가 있는데 겉보기로는 구분되지 않습니다.
+
+| 보이는 모습 | 상태 |
+|---|---|
+| `ê³µíµ 모ë` 처럼 알 수 없는 문자 | 파일은 정상이고 화면만 깨진 것입니다. 설정을 바꾸면 복구됩니다 |
+| `# ?? ??` 처럼 물음표 | 이미 그 인코딩으로 저장되어 원본이 사라진 것입니다. 복구되지 않습니다 |
+
+첫 번째 상태에서 파일을 저장하면 두 번째로 넘어갑니다. 한글이 ISO-8859-1 에 없어 물음표로 대체되기 때문입니다.
+
+### 1-8. IntelliJ 에 표시되는 경고 두 가지는 정상입니다
 
 세팅을 마쳐도 IntelliJ 가 아래 두 가지를 빨간 줄로 표시합니다. 컴파일과 기동에는 영향이 없습니다.
 
@@ -563,7 +628,7 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
 | 어디서 도는가 | 무엇이 |
 |---|---|
 | AWS EC2 (팀 공용) | PostgreSQL 하나 |
-| 내 PC · Docker Compose | Redis, Kafka, 관측 스택, nginx, gateway, config, eureka |
+| 내 PC · Docker Compose | Kafka, Redis, 관측 스택, nginx, gateway, config, eureka |
 | 내 PC · IntelliJ | 지금 작업 중인 서비스 1~3개 |
 
 PostgreSQL만 공용으로 두는 이유는 수집한 데이터를 함께 쓰기 위해서입니다. 수집 API에 하루 호출 제한이 있어 데이터를 채우는 데 여러 날이 걸리고, 추출 배치는 GPU가 필요해 각자 재현할 수 없습니다.
@@ -574,25 +639,29 @@ Kafka를 각자 로컬에 두는 이유는 반대입니다. 공용으로 쓰면 
 
 | 프로파일 | 포함 | 언제 켜는가 |
 |---|---|---|
-| `infra` | Redis, Kafka | 거의 항상 |
-| `edge` | nginx, gateway, config, eureka | 게이트웨이를 거친 호출이나 인증을 확인할 때 |
-| `observability` | Prometheus, Grafana, Loki, Zipkin | 추적이나 메트릭을 볼 때 |
-| `tools` | Kafdrop | 토픽에 메시지가 실제로 실렸는지 확인할 때 |
+| `infra` | Kafka, Redis | 거의 항상 |
+| `observability` | Prometheus, Grafana, Loki, Zipkin | 로그·메트릭·추적을 볼 때 |
+| `tools` | Kafka UI | 토픽에 메시지가 실제로 실렸는지 확인할 때 |
+| `db` | PostgreSQL | 공용 인스턴스를 쓰지 않고 실험할 때만 |
+| `platform` | gateway, eureka, config | 게이트웨이를 거친 호출이나 인증을 확인할 때 |
+| `edge` | nginx | 프론트엔드와 함께 확인할 때 |
 | `pipeline` | ingest, extract | 수집·추출 배치를 돌릴 때만 |
 | `app` | 도메인 서비스 전체 | 배포 검증 때만 |
 
 ```bash
-# 가장 흔한 조합
-docker compose --profile infra --profile edge up -d
+# infra 레포의 .env 에 평소 조합이 지정되어 있어 옵션 없이 뜹니다
+docker compose up -d
 
-# 추적까지 보고 싶을 때
-docker compose --profile infra --profile edge --profile observability up -d
+# 다른 조합이 필요할 때
+docker compose --profile db up -d
 
 # 내리기
-docker compose --profile infra --profile edge down
+docker compose down
 ```
 
-`infra` 와 `edge` 를 띄운 뒤 자기 서비스를 IntelliJ 에서 실행하면, 서비스가 유레카에 등록되고 게이트웨이를 통해 호출할 수 있게 됩니다. 다른 서비스를 호출해야 한다면 그 서비스도 IntelliJ 에서 함께 띄웁니다.
+**`db` 프로파일은 평소에 켜지 않습니다.** PostgreSQL 은 공용 인스턴스를 쓰며, 로컬 인스턴스가 함께 떠 있으면 어느 쪽에 연결되었는지 헷갈립니다. `db` 로 띄운 컨테이너는 `docker compose down` 만으로는 내려가지 않으므로 `--profile db down` 을 사용합니다.
+
+`infra` 와 `platform` 을 띄운 뒤 자기 서비스를 IntelliJ 에서 실행하면, 서비스가 유레카에 등록되고 게이트웨이를 통해 호출할 수 있게 됩니다. 다른 서비스를 호출해야 한다면 그 서비스도 IntelliJ 에서 함께 띄웁니다.
 
 Compose 파일은 이 레포가 아니라 infra 레포에 있습니다. Redis 와 Kafka 는 사람당 하나만 떠 있어야 하므로 서비스 레포마다 두지 않습니다.
 
@@ -625,7 +694,9 @@ Compose 파일은 이 레포가 아니라 infra 레포에 있습니다. Redis �
 
 **인프라**
 
-Redis 6379 / Kafka 9092 / Kafdrop 9000 / Prometheus 9090 / Grafana 3000 / Loki 3100 / Zipkin 9411 / PostgreSQL 5432(원격)
+Redis 6379 / Kafka 9092 · **29092** / Kafka UI 9000 / Prometheus 9090 / Grafana 3000 / Loki 3100 / Zipkin 9411 / PostgreSQL 5432(공용 인스턴스)
+
+**Kafka 는 29092 로 접속합니다.** 9092 는 컨테이너끼리 쓰는 주소여서, 호스트에서 붙으면 브로커가 되돌려주는 `kafka:9092` 를 해석하지 못해 연결에 실패합니다.
 
 프론트엔드를 3000 이 아니라 5173 에 두는 이유는 Grafana 가 3000 을 쓰기 때문입니다.
 
@@ -739,6 +810,31 @@ dependencies {
 
 공통 모듈은 릴리스 버전으로 고정해 사용합니다. 즉 버전을 올리지 않으면 계속 예전 버전으로 빌드됩니다. 컴파일은 정상적으로 되기 때문에 알아채기 어려우므로, **공통 모듈이 변경되었다는 공지를 받으면 이 값부터 확인합니다.**
 
+### 3-4. 로깅과 프로파일
+
+템플릿에는 `src/main/resources/logback-spring.xml` 이 들어 있습니다. 콘솔 출력과 Loki 전송을 함께 설정하며, 서비스마다 고칠 것은 없습니다.
+
+Loki 전송용 appender 정의는 공통 모듈 jar 안의 `logback-loki-appender.xml` 에 있고, 템플릿의 `logback-spring.xml` 이 그것을 `include` 해서 사용합니다. 파일을 나눈 이유는 `logback-spring.xml` 이라는 이름이 클래스패스에서 하나만 읽히기 때문입니다. 서비스 레포가 jar 보다 앞서므로 공통 모듈에 같은 이름을 두면 무시됩니다.
+
+**전송 여부는 프로파일이 결정합니다.**
+
+| 프로파일 | 언제 | Loki 전송 |
+|---|---|---|
+| `local` | IntelliJ 에서 실행 | 하지 않음 |
+| `dev` | 컨테이너에서 실행 | 함 |
+
+`application.yml` 에 `spring.profiles.default: local` 이 들어 있어, 아무것도 지정하지 않으면 `local` 로 동작합니다. `active` 가 아니라 `default` 인 것이 중요합니다. `default` 는 아무도 지정하지 않았을 때만 적용되므로, 컨테이너에서 `SPRING_PROFILES_ACTIVE=dev` 를 주면 그쪽이 우선합니다.
+
+IntelliJ 에서 Loki 전송까지 확인하고 싶다면 실행 구성의 환경 변수에 다음을 추가합니다.
+
+```
+SPRING_PROFILES_ACTIVE=dev
+```
+
+기동 로그 첫머리의 `The following 1 profile is active` 줄로 어느 쪽인지 확인할 수 있습니다.
+
+메트릭과 추적은 프로파일과 무관하게 항상 전송됩니다. Prometheus 는 서비스의 `/actuator/prometheus` 를 직접 수집하고, 추적은 애플리케이션이 Zipkin 으로 보냅니다.
+
 ---
 
 ## 4. 설정값을 어디에 두는가
@@ -784,10 +880,12 @@ cp .env.example .env
 
 | 키 | 두는 곳 | 값 | 무엇을 하는가 |
 |---|---|---|---|
-| `commonVersion` | 레포 안 `gradle.properties` | 예: `0.0.3` | 공통 모듈 버전 |
+| `commonVersion` | 레포 안 `gradle.properties` | 예: `0.0.4` | 공통 모듈 버전 |
 | `GPR_USER` / `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
 | `DB_HOST` | 환경변수 (`.env`) | 개발용 PostgreSQL 주소 | 팀 공용 EC2의 주소입니다. 인스턴스를 재생성하면 바뀌므로 각자 이 값만 고칩니다 |
 | `DB_PASSWORD` | 환경변수 (`.env`) | 서비스 계정 비밀번호 | 절대 커밋하지 않습니다 |
+| `SPRING_PROFILES_ACTIVE` | 환경변수 (실행 구성 또는 Compose) | `dev` | 지정하지 않으면 `local` 로 동작하며 Loki 전송이 꺼집니다 |
+| `app.logging.loki.url` | 레포 안 `application.yml` | 로컬은 `localhost:3100`, 컨테이너는 `loki:3100` | logback 이 읽는 전송 주소입니다 |
 | `app.auditor.system-name` | 레포 안 `application.yml` | 기본 `SYSTEM`, ingest는 `ingest-batch`, extract는 `extract-batch` | 인증 없이 도는 배치가 감사 컬럼에 남길 이름입니다. 이 값이 없으면 배치의 INSERT가 실패합니다 |
 | `app.outbox.relay.enabled` | 레포 안 `application.yml` | 한 인스턴스에서만 `true` | 미발행 이벤트를 회수하는 스케줄러를 켭니다. 여러 인스턴스에서 켜면 같은 행을 동시에 집어 순서 보장이 깨집니다 |
 | `spring.jpa.hibernate.ddl-auto` | 레포 안 `application.yml` | `validate` | 스키마는 Flyway가 관리하므로 애플리케이션은 검증만 합니다. 엔티티와 DB가 어긋나면 기동에 실패합니다 |
@@ -1398,7 +1496,7 @@ com.pawtrail.place
 | 증상 | 원인 |
 |---|---|
 | `IllegalTransactionStateException` 이 나며 이벤트 발행이 실패합니다 | ④에 `@Transactional` 이 없습니다. `OutboxEventRecorder` 는 트랜잭션 없이 부를 수 없습니다 |
-| 이벤트를 발행했는데 받는 서비스가 반응하지 않습니다 | 토픽 문자열이 어긋났거나, 받는 쪽 `groupId` 가 겹쳤습니다. Kafdrop(`tools` 프로파일)으로 토픽에 메시지가 실렸는지부터 확인합니다 |
+| 이벤트를 발행했는데 받는 서비스가 반응하지 않습니다 | 토픽 문자열이 어긋났거나, 받는 쪽 `groupId` 가 겹쳤습니다. Kafka UI(`tools` 프로파일)로 토픽에 메시지가 실렸는지부터 확인합니다 |
 | 응답 JSON 에 엔티티 필드가 그대로 노출됩니다 | ⑩을 거치지 않고 엔티티를 반환했습니다. 컨트롤러 반환 타입이 `CommonApiResponse<Place>` 가 아닌지 확인합니다 |
 
 **다른 서비스를 호출해야 한다면** ⑥⑦ 대신 `domain/provider/` 에 인터페이스를, `infrastructure/provider/client/` 에 `@HttpExchange` 구현을 둡니다. 구조는 같습니다 — 약속은 `domain`, 구현은 `infrastructure` 입니다.
@@ -1547,7 +1645,7 @@ InboxProcessor는 처리 이력을 DB에 남겨야 하는데 이 서비스들에
 
 공통 모듈에 상수로 두지 않는 이유는, 토픽은 개발 도중 추가·변경·삭제될 수 있는데 공통 모듈에 있으면 그때마다 재배포와 전 서비스 버전업이 필요하기 때문입니다. 공통 모듈의 기준은 "거의 바뀌지 않는 것"입니다.
 
-대신 **문자열이 어긋나면 오류 없이 이벤트만 오지 않습니다.** 위 표를 참조해 정확히 적고, 실물 확인은 Kafdrop(`tools` 프로파일, 9000 포트)에서 토픽에 메시지가 쌓였는지로 합니다.
+대신 **문자열이 어긋나면 오류 없이 이벤트만 오지 않습니다.** 위 표를 참조해 정확히 적고, 실물 확인은 Kafka UI(`tools` 프로파일, 9000 포트)에서 토픽에 메시지가 쌓였는지로 합니다.
 
 ---
 
