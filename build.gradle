@@ -37,7 +37,7 @@ dependencies {
     // ── 공통 모듈 ─────────────────────────────────────────────
     // 공통 모듈이 처음 배포되기 전까지는 주석 상태로 둡니다.
     // 배포 후 아래 줄의 주석을 풀고 gradle.properties의 commonVersion을 맞춥니다.
-    // implementation "com.pawtrail:common:${commonVersion}"
+    implementation "com.pawtrail:common:${commonVersion}"
 
     // 공통 모듈의 PageResponse가 org.springframework.data.domain.Page를 사용합니다.
     // starter-data-redis가 전이로 끌어오지만 그러면 페이징이 캐시 의존성에 매달리므로
