@@ -193,31 +193,17 @@ commonVersion=0.0.4
 
 #### src/main/resources/application.yml
 
-서비스 이름, 포트, DB 접속 정보를 채웁니다. 포트는 다른 서비스와 겹치지 않아야 하며, 서비스별 배정 포트는 infra 레포에 정리되어 있습니다.
+**이 파일에서 고칠 것은 서비스 이름 한 줄뿐입니다.** 포트·데이터베이스·주소는 모두 `paw-trail/config` 저장소에 있으며 설정 서버가 내려줍니다.
 
 ```yaml
 # 바꾸기 전
 spring:
   application:
     name: template-service
-  datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/template_db
-    username: template_user
-    password: ${DB_PASSWORD}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-server:
-  port: 8080
-app:
-  logging:
-    loki:
-      url: http://localhost:3100/loki/api/v1/push
-  auditor:
-    system-name: SYSTEM
-  outbox:
-    relay:
-      enabled: false
+  config:
+    import: "optional:configserver:http://${CONFIG_HOST:localhost}:8888"
+  profiles:
+    default: local
 ```
 
 ```yaml
@@ -225,48 +211,66 @@ app:
 spring:
   application:
     name: place-service
-  datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/place_db
-    username: place_svc
-    password: ${DB_PASSWORD}
-  jpa:
-    hibernate:
-      ddl-auto: validate
+  config:
+    import: "optional:configserver:http://${CONFIG_HOST:localhost}:8888"
+  profiles:
+    default: local
+```
+
+세 줄의 뜻은 각각 이렇습니다.
+
+| 키 | 하는 일 |
+|---|---|
+| `spring.application.name` | 설정 서버에서 **이 이름의 파일을 찾습니다.** 저장소명·이미지명·유레카 등록 이름과도 같아야 합니다 |
+| `spring.config.import` | 설정을 받아 올 주소입니다. **`optional:` 이 붙어 있어 설정 서버가 없어도 기동됩니다** |
+| `spring.profiles.default` | 아무도 프로파일을 정해 주지 않으면 `local` 로 봅니다. `active` 가 아니라 `default` 인 것이 중요하며, 컨테이너의 `SPRING_PROFILES_ACTIVE=dev` 가 이깁니다 |
+
+`optional:` 을 붙이는 이유는 서비스 하나만 띄워 확인하는 일이 잦기 때문입니다. 이것이 없으면 매번 설정 서버를 함께 띄워야 하고 테스트도 실패합니다. 다만 **데이터베이스 주소가 내려오지 않으므로 실제 기동은 설정 서버가 떠 있어야 합니다.**
+
+`${CONFIG_HOST:localhost}` 에 기본값을 붙이는 것은 의도입니다. 로컬에서는 언제나 `localhost:8888` 이므로 기본값이 정답이고, 없으면 개발자마다 실행 구성에 환경 변수를 넣어야 합니다.
+
+#### config 저장소에 이 서비스의 설정 파일 만들기
+
+**복제 직후 반드시 해야 하는 작업입니다.** 이 파일이 없으면 포트와 데이터베이스 주소가 내려오지 않아 기동에 실패합니다.
+
+`paw-trail/config` 저장소 루트에 `<서비스명>.yml` 을 만듭니다.
+
+```yaml
+# =============================================================================
+# 2계층 — place-service
+# =============================================================================
+# 장소 담당임
+#
+# 호스트는 3계층의 app.datasource.host 에서 오고 비밀번호는 1계층에 있음
+# 계정 10개가 같은 비밀번호를 쓰므로 여기에는 계정명만 둠
+# =============================================================================
+
 server:
   port: 8084
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${app.datasource.host}:5432/place_db
+    username: place_svc
+
 app:
-  logging:
-    loki:
-      url: http://localhost:3100/loki/api/v1/push
-  auditor:
-    system-name: SYSTEM
   outbox:
     relay:
+      # place.updated 를 발행함
       enabled: true
 ```
 
-`app.outbox.relay.enabled`는 이벤트를 발행하는 서비스에서만 `true`로 둡니다. 인스턴스를 여러 개 띄우는 서비스라면 한 인스턴스에서만 켭니다. `app.auditor.system-name`은 배치가 아닌 서비스에서는 `SYSTEM` 그대로 둡니다.
+- **포트**는 2-3절의 배정표를 따릅니다
+- **데이터베이스 계정**은 `<서비스>_svc` 형식입니다. `<서비스>_user` 가 아닙니다
+- **`app.outbox.relay.enabled`** 는 이벤트를 발행하는 서비스에서만 `true` 로 둡니다. 인스턴스를 여러 개 띄우는 서비스라면 한 인스턴스에서만 켭니다
+- **`app.auditor.system-name`** 은 1계층에 `SYSTEM` 으로 있으므로 배치가 아니면 적지 않습니다. `ingest` 와 `extract` 만 각각 `ingest-batch`, `extract-batch` 로 덮습니다
+- 데이터베이스를 쓰지 않는 서비스는 `server.port` 만 적습니다
 
-DB 계정 이름은 `<서비스>_svc` 형식입니다. 포트는 2-3절의 배정표를 따릅니다.
-
-**템플릿에는 임시로 꺼 둔 설정이 둘 있습니다.** 해당 서버가 만들어지면 되돌리며, 그때까지는 그대로 둡니다.
-
-```yaml
-spring:
-  cloud:
-    config:
-      enabled: false      # config-server 가 생기면 이 블록을 걷어냅니다
-
-eureka:
-  client:
-    enabled: false        # eureka-server 가 생기면 true 로 되돌립니다
-```
-
-켠 상태로 두면 해당 서버가 없을 때 기동 자체가 실패하거나(`config`), 30초마다 접속 실패 스택트레이스가 쌓여 로그를 읽기 어렵습니다(`eureka`).
-
-`spring.profiles.default: local` 도 템플릿에 들어 있습니다. 이 값이 프로파일을 가르며 Loki 전송 여부를 결정합니다. 자세한 내용은 3-4절에 있습니다.
+설정 계층과 값을 어디에 둘지는 4장에, `config` 저장소 자체의 규칙은 그 저장소의 README에 있습니다.
 
 #### Dockerfile
+
+
 
 jar 경로가 `settings.gradle`의 이름을 따라갑니다. 아래처럼 와일드카드로 되어 있다면 고치지 않아도 됩니다.
 
@@ -443,39 +447,20 @@ public class VerdictApplication {
 }
 ```
 
-#### ③ `src/main/resources/application.yml` — DB 관련 블록 3개
+#### ③ config 저장소의 `<서비스명>.yml` — datasource 를 적지 않습니다
+
+서비스 저장소의 `application.yml` 에는 세 줄뿐이므로 지울 것이 없습니다. 대신 **config 저장소에 만드는 2계층 파일에 `spring.datasource` 를 넣지 않습니다.**
 
 ```yaml
-spring:
-  application:
-    name: verdict-service
-
-  # ▼▼▼ 여기부터 지웁니다 ▼▼▼
-  datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/template_db
-    username: template_user
-    password: ${DB_PASSWORD}
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-    properties:
-      hibernate:
-        format_sql: true
-
-  flyway:
-    enabled: true
-    locations: classpath:db/migration/common,classpath:db/migration/service
-  # ▲▲▲ 여기까지 지웁니다 ▲▲▲
-
-  data:
-    redis:
-      host: localhost
-      port: 6379
+# 2계층 — verdict-service
+# DB 를 쓰지 않으므로 datasource 를 두지 않음
+server:
+  port: 8086
 ```
 
-맨 아래 `app.outbox.relay.enabled` 도 지웁니다. outbox 테이블이 없으므로 회수 스케줄러가 돌 대상이 없습니다. `app.auditor.system-name` 은 남겨도 무방하지만, 감사 컬럼을 쓸 엔티티가 없으므로 함께 지우는 편이 깔끔합니다.
+1계층의 JPA·Flyway 값은 그대로 내려오지만, **JDBC 의존성 자체를 걷어낸 서비스라 아무 일도 일어나지 않습니다.** 관련 자동 설정이 클래스가 없어 아예 올라오지 않기 때문입니다.
+
+`app.outbox.relay.enabled` 도 적지 않습니다. outbox 테이블이 없으므로 회수 스케줄러가 돌 대상이 없습니다. `app.auditor.system-name` 은 1계층에 `SYSTEM` 으로 있으므로 어차피 적을 일이 없습니다.
 
 #### ④ 폴더 2개
 
@@ -490,13 +475,15 @@ src/main/java/.../infrastructure/persistence/   ← 폴더째 지웁니다 (저�
 
 ```bash
 # macOS / Git Bash
-grep -rn "jpa\|Jpa\|flyway\|Flyway\|querydsl\|QueryDsl\|datasource" build.gradle src/main/resources/application.yml src/main/java
+grep -rn "jpa\|Jpa\|flyway\|Flyway\|querydsl\|QueryDsl\|datasource" build.gradle src/main/java
 ```
 
 ```powershell
 # PowerShell
-Select-String -Path build.gradle, src\main\resources\application.yml -Pattern "jpa|flyway|querydsl|datasource"
+Select-String -Path build.gradle -Pattern "jpa|flyway|querydsl|datasource"
 ```
+
+`application.yml` 은 세 줄뿐이므로 검사 대상에 넣지 않습니다.
 
 그다음 빌드가 통과하는지 봅니다.
 
@@ -566,9 +553,52 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
 
 시스템 환경변수를 직접 바꿨다면 **터미널 창을 새로 열어야** 반영됩니다.
 
-### 1-7. Windows 에서 한 번만 해두는 IntelliJ 설정
+### 1-7. 처음 한 번 해두는 설정과 자주 겪는 것들
 
-서비스를 만들 때마다 겪게 되므로 처음 한 번 설정해 둡니다. macOS 에서는 둘 다 해당하지 않습니다.
+서비스를 만들 때마다 반복해서 겪게 되므로 미리 읽어 둡니다.
+
+#### IntelliJ 가 Gradle 프로젝트로 인식하지 못할 때
+
+폴더를 그냥 `Open` 으로 열면 "Load Gradle Project" 알림이 잠깐 떴다 사라지고 **평범한 디렉터리 프로젝트로 열립니다.** 아래 세 가지가 그 지문입니다.
+
+| 지문 | 정상일 때 |
+|---|---|
+| `com`·`pawtrail`·`<서비스명>` 이 폴더 여러 개로 나뉘어 보임 | `com.pawtrail.<서비스명>` 한 줄로 접힙니다 |
+| 트리 맨 아래에 `External Libraries` 노드가 없음 | 의존성 노드가 있습니다 |
+| 실행 구성이 `Current File` 이고 main 옆에 실행 표시가 없음 | 초록 실행 표시가 있습니다 |
+
+해결은 아래 순서로 시도합니다.
+
+```
+① build.gradle 우클릭 → Link Gradle Project
+② Gradle 툴 창의 + 버튼으로 build.gradle 지정
+③ File → Close Project 후 File → Open 에서
+   ★폴더가 아니라 build.gradle 파일 자체를 선택 → Open as Project
+```
+
+③이 가장 확실합니다. 그래도 안 되면 `.idea` 폴더와 `*.iml` 을 지우고 ③을 반복합니다.
+
+붙은 뒤 **Settings → Build Tools → Gradle 의 `Gradle JVM` 이 21인지 확인합니다.** 터미널의 `JAVA_HOME` 과 별개이므로 `gradlew` 가 잘 돌았다고 IntelliJ 도 되는 것이 아닙니다.
+
+#### `bootRun` 의 진행률이 멈춘 것처럼 보입니다
+
+`bootRun` 은 앱이 살아 있는 동안 끝나지 않는 태스크입니다. Gradle 진행 막대가 80% 근처에서 완료로 가지 않고 경과 시간만 올라가는데, **막대가 그 자리에 있다는 것이 곧 앱이 떠 있다는 표시입니다.** 앱을 멈춰야 100% 가 됩니다.
+
+진행 막대 바로 아래 줄이 `> :bootRun` 이면 실행 중이고, `Resolve dependencies of ...` 나 `Download https://...` 면 의존성을 받는 중입니다.
+
+**IntelliJ 의 Run 버튼으로 띄우는 편이 낫습니다.** 콘솔이 평범하게 나오고 중지가 쉽습니다.
+
+첫 빌드가 몇 분 걸리는 것도 정상입니다. Gradle 배포판과 의존성을 처음 받으며, 특히 유레카 클라이언트의 전이 의존성 트리가 큽니다.
+
+#### PowerShell 의 `curl` 은 진짜 curl 이 아닙니다
+
+`Invoke-WebRequest` 의 별칭이라 응답이 객체로 감싸져 나옵니다. 원문을 보려면 **확장자까지 적습니다.**
+
+```powershell
+curl.exe http://localhost:8095/actuator/health
+```
+
+설정 서버의 응답처럼 긴 JSON 은 브라우저로 여는 편이 편합니다.
 
 #### 실행 시 `Command line is too long`
 
@@ -613,7 +643,7 @@ Settings → Editor → File Encodings
 | 표시되는 곳 | 이유 |
 |---|---|
 | `<서비스명>Application.java` 의 `@EntityScan`·`@EnableJpaRepositories` 안에 있는 `com.pawtrail.common` | 공통 모듈이 아직 의존성에 없어서입니다. 3장에 따라 공통 모듈을 연결하면 사라집니다 |
-| `application.yml` 의 `app.auditor.system-name`, `app.outbox.relay.enabled` | 이 프로젝트가 직접 정의한 프로퍼티라 스프링이 아는 목록에 없어서입니다. 공통 모듈에 설정 클래스가 추가되면 사라집니다 |
+| config 저장소의 `app.auditor.system-name`, `app.outbox.relay.enabled`, `app.logging.loki.url` | 이 프로젝트가 직접 정의한 프로퍼티라 스프링이 아는 목록에 없어서입니다. 서비스 저장소가 아니라 config 저장소에 있으므로 여기서는 보이지 않습니다 |
 
 `@EntityScan` 과 `@EnableJpaRepositories` 의 `basePackages` 는 **문자열을 받습니다.** 컴파일러 입장에서는 일반 문자열과 다를 것이 없으므로, 해당 패키지가 실제로 없어도 컴파일과 기동이 정상적으로 이루어집니다. 런타임에 스캔했을 때 아무것도 찾지 못하고 끝날 뿐입니다.
 
@@ -689,8 +719,10 @@ Compose 파일은 이 레포가 아니라 infra 레포에 있습니다. Redis �
 | place | 8084 | | report | 8092 |
 | policy | 8085 | | notification | 8093 |
 | verdict | 8086 | | review | 8094 |
-| search | 8087 | | | |
+| search | 8087 | | **template** | **8095** |
 | ingest | 8088 | | | |
+
+`template-service` 8095 는 이 저장소를 그대로 띄워 확인할 때 쓰는 자리입니다. 배포 대상이 아니며 config 저장소에 `template-service.yml` 이 있습니다.
 
 **인프라**
 
@@ -714,26 +746,28 @@ Apple Silicon 맥에서는 arm64 이미지가 있는지 확인합니다. Kafka�
 
 PostgreSQL 인스턴스는 하나지만 그 안에 서비스별 DB와 전용 계정이 나뉘어 있습니다. 각 계정은 **자기 DB에만 접속할 수 있습니다.** 다른 서비스의 DB에 붙으려 하면 거부되는데, 이는 설정 오류가 아니라 의도된 격리입니다.
 
-접속 주소와 비밀번호는 팀 내부에서 전달받아 `.env` 에 넣습니다. `application.yml` 에는 값을 직접 적지 않고 환경변수를 참조합니다.
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/place_db
-    username: place_user
-    password: ${DB_PASSWORD}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-```
+**접속 정보는 서비스 저장소가 아니라 config 저장소에 있습니다.** 어디에 무엇이 있는지는 이렇습니다.
 
 ```
-# .env
+config/application-local.yml    app.datasource.host          ${DB_HOST}
+config/<서비스명>.yml            spring.datasource.url        jdbc:postgresql://${app.datasource.host}:5432/place_db
+                                spring.datasource.username   place_svc
+config/application.yml          spring.datasource.password   ${SERVICE_DB_PASSWORD}
+```
+
+주소를 한 곳(`app.datasource.host`)에만 적고 서비스별 파일이 그것을 참조하는 이유는, **장애로 데이터베이스를 승격했을 때 그 한 줄만 고치면 모든 서비스가 따라오기 때문**입니다. 서비스마다 전체 주소를 적어 두면 열네 곳을 고쳐야 합니다.
+
+주소와 비밀번호는 팀 내부에서 전달받아 환경 변수로 넣습니다. **어느 설정 파일에도 값을 직접 적지 않습니다.**
+
+```
+# .env  (Docker Compose 가 읽습니다)
 DB_HOST=<전달받은 주소>
-DB_PASSWORD=<전달받은 비밀번호>
+SERVICE_DB_PASSWORD=<전달받은 비밀번호>
 ```
 
-주소를 환경변수로 두는 이유는 EC2 를 재생성하면 주소가 바뀌기 때문입니다. `.env` 한 줄만 고치면 되고 레포를 손댈 일이 없습니다.
+**`SERVICE_DB_PASSWORD` 는 infra 저장소의 `.env` 에 넣은 값과 같아야 합니다.** 계정을 만들 때 쓰는 값과 접속할 때 쓰는 값이 같은 것이므로 이름도 같게 두었습니다.
+
+주소를 환경 변수로 두는 이유는 EC2 를 재생성하면 주소가 바뀌기 때문입니다. 각자 `.env` 한 줄만 고치면 되고 저장소를 손댈 일이 없습니다.
 
 접속하려면 **본인의 공인 IP 가 보안그룹에 등록되어 있어야 합니다.** 인터넷 회선이 바뀌거나 공인 IP 가 갱신되면 다시 등록해야 하므로, 접속이 갑자기 안 될 때 이 부분을 먼저 확인합니다.
 
@@ -816,6 +850,16 @@ dependencies {
 
 Loki 전송용 appender 정의는 공통 모듈 jar 안의 `logback-loki-appender.xml` 에 있고, 템플릿의 `logback-spring.xml` 이 그것을 `include` 해서 사용합니다. 파일을 나눈 이유는 `logback-spring.xml` 이라는 이름이 클래스패스에서 하나만 읽히기 때문입니다. 서비스 레포가 jar 보다 앞서므로 공통 모듈에 같은 이름을 두면 무시됩니다.
 
+**`<springProfile>` 은 최상위에만 둘 수 있습니다.** `<root>`·`<appender>`·`<logger>` 안에 넣으면 아래 경고가 나고 동작이 보장되지 않습니다.
+
+```
+<springProfile> elements cannot be nested within an <appender>, <logger> or <root> element
+```
+
+logback 은 `<springProfile>` 을 먼저 처리하는데 `<root>` 안쪽은 나중에 처리하므로 평가 시점이 어긋나기 때문입니다. 그래서 템플릿은 **프로파일마다 `<root>` 를 따로 두는 형태**로 되어 있습니다. `local` 에서는 appender 정의를 `include` 하지도 않아 아예 만들어지지 않습니다.
+
+파일 이름은 반드시 `logback-spring.xml` 이어야 합니다. `logback.xml` 로 두면 스프링 확장이 걸리지 않아 `<springProfile>` 과 `<springProperty>` 가 **오류 없이 조용히 무시됩니다.**
+
 **전송 여부는 프로파일이 결정합니다.**
 
 | 프로파일 | 언제 | Loki 전송 |
@@ -839,26 +883,66 @@ SPRING_PROFILES_ACTIVE=dev
 
 ## 4. 설정값을 어디에 두는가
 
-설정값은 성격에 따라 세 곳으로 나뉩니다. 셋은 읽히는 시점이 다르므로 섞어 쓰지 않습니다.
+설정값은 성격에 따라 네 곳으로 나뉩니다. 읽히는 시점과 바꿀 때 드는 비용이 서로 다르므로 섞어 쓰지 않습니다.
 
-| 두는 곳 | 언제 읽히는가 | 무엇을 두는가 | 커밋 |
+| 두는 곳 | 언제 읽히는가 | 무엇을 두는가 | 바꾸려면 |
 |---|---|---|---|
-| 레포 안 `gradle.properties` | 빌드할 때 (Gradle) | 빌드에만 쓰이는 값 | 함 |
-| 환경변수 (`.env` 또는 IntelliJ 실행 구성) | 빌드·기동 시점 | 비밀값, 사람이나 서버마다 다른 값 | 안 함 |
-| 레포 안 `src/main/resources/application.yml` | 애플리케이션 기동 시 | 이 서비스 고유의 값, 동작 스위치 | 함 |
-| Config 저장소의 `<서비스명>.yml` | 애플리케이션 기동·갱신 시 | 여러 서비스가 공유하거나 재배포 없이 바꿔야 하는 값 | 함 (비밀값 제외) |
+| 레포 안 `gradle.properties` | 빌드할 때 (Gradle) | 빌드에만 쓰이는 값 | 다시 빌드 |
+| 레포 안 `application.yml` | 기동할 때 | **세 줄뿐입니다** (아래 참고) | 재배포 |
+| **config 저장소** | 기동·갱신할 때 | 그 밖의 거의 모든 값 | **커밋만 하면 됩니다** |
+| 환경 변수 | 빌드·기동 시점 | 비밀값, 사람마다 다른 값 | 컨테이너 재시작 |
 
-비밀값은 `application.yml`에 직접 쓰지 않고 환경변수를 참조하는 형태로만 적습니다.
+**대부분의 값은 config 저장소에 있습니다.** 서비스 저장소의 `application.yml` 에는 세 줄만 남깁니다.
 
 ```yaml
 spring:
-  datasource:
-    password: ${DB_PASSWORD}
+  application:
+    name: place-service
+  config:
+    import: "optional:configserver:http://${CONFIG_HOST:localhost}:8888"
+  profiles:
+    default: local
 ```
 
-### 4-1. 환경변수를 어디에 넣는가
+**config 저장소로 옮긴 값을 서비스 저장소에 남겨 두지 않습니다.** 같은 키가 두 곳에 있으면 어느 쪽이 이기는지 매번 확인해야 합니다.
 
-환경변수는 넣는 위치가 실행 방법에 따라 다릅니다. 여기서 자주 막히므로 세 경우를 구분합니다.
+### 4-1. config 저장소의 4계층
+
+값은 네 파일에 나뉘어 있고, **계층 번호가 곧 세기입니다. 숫자가 큰 쪽이 이깁니다.**
+
+| 계층 | 파일 | 적용 범위 | 예 |
+|:---:|---|---|---|
+| 1 | `application.yml` | 모든 서비스 · 모든 환경 | `ddl-auto`, Flyway `locations`, Kafka 직렬화기, 액추에이터 노출 |
+| 2 | `{서비스명}.yml` | 해당 서비스 · 모든 환경 | 포트, 데이터베이스 이름과 계정, outbox relay 스위치 |
+| 3 | `application-{env}.yml` | 모든 서비스 · 해당 환경만 | 데이터베이스 호스트, Kafka · Redis · 유레카 · Loki · Zipkin 주소 |
+| 4 | `{서비스명}-{env}.yml` | 해당 서비스 · 해당 환경만 | 되도록 비워 둡니다 |
+
+**"구체적인 파일이 이긴다"가 아닙니다.** 규칙은 두 겹입니다.
+
+1. 프로파일이 붙은 파일이 안 붙은 파일을 이깁니다
+2. 같은 조건 안에서는 서비스별 파일이 공통 파일을 이깁니다
+
+그래서 **3계층이 2계층을 이깁니다.** 환경별 공통값을 특정 서비스만 다르게 하고 싶다면 2계층이 아니라 **4계층에 적어야 합니다.** 2계층에 적으면 덮여서 반영되지 않습니다.
+
+값을 추가할 때는 **"서비스마다 다른가 / 환경마다 다른가"** 두 가지만 판단합니다. 애매하면 번호가 작은 계층에 둡니다. 나중에 큰 번호에서 덮어쓰는 것이 반대보다 쉽습니다.
+
+### 4-2. 환경 프로파일
+
+프로파일은 3개이며 축의 기준은 **어디에서 실행되는가** 입니다.
+
+| 프로파일 | 실행 위치 |
+|---|---|
+| `local` | IntelliJ에서 직접 실행 |
+| `dev` | 로컬 `docker compose` 의 `app` 프로파일 |
+| `prod` | AWS EC2 |
+
+지정하지 않으면 `local` 로 동작하며 Loki 전송이 꺼집니다. 컨테이너에서는 `SPRING_PROFILES_ACTIVE=dev` 가 이깁니다.
+
+**프로파일 이름에 하이픈을 쓰지 않습니다.** 하이픈이 있으면 설정 서버가 서비스명과 프로파일을 가르지 못해 설정을 받아오지 못합니다.
+
+### 4-3. 환경변수를 어디에 넣는가
+
+환경 변수는 넣는 위치가 실행 방법에 따라 다릅니다. 여기서 자주 막히므로 세 경우를 구분합니다.
 
 | 실행 방법 | 어디에 넣는가 |
 |---|---|
@@ -866,7 +950,7 @@ spring:
 | IntelliJ에서 서비스를 직접 실행할 때 | 실행 구성(Run/Debug Configurations)의 Environment variables 칸 |
 | Gradle 빌드(공통 모듈 내려받기) | OS 환경변수. IntelliJ 실행 구성에 넣어도 Gradle 빌드에는 적용되지 않습니다 |
 
-**IntelliJ에서 직접 실행하는 서비스는 `.env` 파일을 읽지 않습니다.** `.env`는 Docker Compose가 읽는 파일이므로, IntelliJ로 띄우는 서비스에 `DB_PASSWORD`가 필요하다면 실행 구성에 직접 넣어야 합니다.
+**IntelliJ에서 직접 실행하는 서비스는 `.env` 파일을 읽지 않습니다.** `.env` 는 Docker Compose 가 읽는 파일이므로, IntelliJ 로 띄우는 서비스에 `SERVICE_DB_PASSWORD` 가 필요하다면 실행 구성에 직접 넣어야 합니다.
 
 레포에 들어 있는 `.env.example` 을 복사해 `.env` 를 만들고 값을 채웁니다.
 
@@ -876,34 +960,77 @@ cp .env.example .env
 
 `.env` 는 커밋하지 않습니다. `.gitignore` 에 이미 포함되어 있습니다.
 
-### 4-2. 서비스가 사용하는 주요 설정값
+### 4-4. 서비스가 사용하는 주요 설정값
 
 | 키 | 두는 곳 | 값 | 무엇을 하는가 |
 |---|---|---|---|
 | `commonVersion` | 레포 안 `gradle.properties` | 예: `0.0.4` | 공통 모듈 버전 |
 | `GPR_USER` / `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
-| `DB_HOST` | 환경변수 (`.env`) | 개발용 PostgreSQL 주소 | 팀 공용 EC2의 주소입니다. 인스턴스를 재생성하면 바뀌므로 각자 이 값만 고칩니다 |
-| `DB_PASSWORD` | 환경변수 (`.env`) | 서비스 계정 비밀번호 | 절대 커밋하지 않습니다 |
+| `CONFIG_HOST` | 환경변수 | 기본값 `localhost` | 설정 서버 주소. 컨테이너와 AWS 에서만 지정합니다 |
+| `DB_HOST` | 환경변수 (`.env`) | 개발용 PostgreSQL 주소 | config 저장소의 `app.datasource.host` 가 이 값을 참조합니다 |
+| `SERVICE_DB_PASSWORD` | 환경변수 (`.env`) | 서비스 계정 비밀번호 | **infra 저장소의 `.env` 에 넣은 값과 같아야 합니다.** 절대 커밋하지 않습니다 |
 | `SPRING_PROFILES_ACTIVE` | 환경변수 (실행 구성 또는 Compose) | `dev` | 지정하지 않으면 `local` 로 동작하며 Loki 전송이 꺼집니다 |
-| `app.logging.loki.url` | 레포 안 `application.yml` | 로컬은 `localhost:3100`, 컨테이너는 `loki:3100` | logback 이 읽는 전송 주소입니다 |
-| `app.auditor.system-name` | 레포 안 `application.yml` | 기본 `SYSTEM`, ingest는 `ingest-batch`, extract는 `extract-batch` | 인증 없이 도는 배치가 감사 컬럼에 남길 이름입니다. 이 값이 없으면 배치의 INSERT가 실패합니다 |
-| `app.outbox.relay.enabled` | 레포 안 `application.yml` | 한 인스턴스에서만 `true` | 미발행 이벤트를 회수하는 스케줄러를 켭니다. 여러 인스턴스에서 켜면 같은 행을 동시에 집어 순서 보장이 깨집니다 |
-| `spring.jpa.hibernate.ddl-auto` | 레포 안 `application.yml` | `validate` | 스키마는 Flyway가 관리하므로 애플리케이션은 검증만 합니다. 엔티티와 DB가 어긋나면 기동에 실패합니다 |
-| `spring.datasource.url` | Config 저장소의 `<서비스명>.yml` | 서비스별 DB 주소 | DB를 승격했을 때 이 값을 바꾸고 `/actuator/refresh`를 호출하면 재배포 없이 전환됩니다 |
-| `spring.datasource.username` / `password` | 계정명은 Config 저장소, 비밀번호는 환경변수 | 서비스 전용 계정 | 서비스마다 자기 DB에만 접속할 수 있는 계정을 씁니다 |
-| 공공데이터 `serviceKey` | 환경변수 (`.env`) | **Decoding 키 원본** | 라이브러리 자동 인코딩을 켠 상태로 사용합니다. Encoding 키를 넣으면 이중 인코딩이 되어 403이 발생합니다 |
-| `LLM_BASE_URL` / `LLM_MODEL` | 환경변수 (`.env`) | 로컬 추론 서버 또는 외부 API | extract가 이 두 값만 바꿔 추론 대상을 전환합니다 |
-| 소셜 로그인 `client-id` / `client-secret` | 환경변수 (`.env`) | 제공자 콘솔에서 발급받은 값 | OAuth 로그인에 사용합니다 |
-| 소셜 로그인 `redirect-uri` | Config 저장소의 `<서비스명>.yml` | 로컬용·배포용 | 두 주소 모두 OAuth 제공자 콘솔에 등록되어 있어야 합니다 |
-| JWT 서명 키 | Config 저장소 | auth는 개인키, gateway는 공개키 | RS256을 사용하므로 키가 둘로 나뉩니다 |
+| `spring.datasource.url` | config 2계층 | `jdbc:postgresql://${app.datasource.host}:5432/<서비스>_db` | 호스트는 3계층에서 참조해 옵니다 |
+| `spring.datasource.username` | config 2계층 | `<서비스>_svc` | 자기 DB에만 접속할 수 있는 계정입니다. `_user` 가 아닙니다 |
+| `app.datasource.host` | config 3계층 | 환경별 주소 | **데이터베이스를 승격할 때 고치는 자리가 이 한 줄입니다** |
+| `app.auditor.system-name` | config 1계층 (기본 `SYSTEM`) | 배치만 2계층에서 덮음 | 인증 없이 도는 배치가 감사 컬럼에 남길 이름입니다. 없으면 배치의 INSERT 가 실패합니다 |
+| `app.outbox.relay.enabled` | config 2계층 | 발행 서비스의 한 인스턴스만 `true` | 미발행 이벤트를 회수하는 스케줄러입니다 |
+| `app.logging.loki.url` | config 3계층 | 환경별 주소 | logback 이 읽는 전송 주소입니다 |
+| `spring.jpa.hibernate.ddl-auto` | config 1계층 | `validate` | 스키마는 Flyway가 관리하므로 애플리케이션은 검증만 합니다 |
+| 외부 API 키 · OAuth 시크릿 | 환경변수 | 제공자 콘솔에서 발급 | 설정 파일에 적지 않습니다 |
+| JWT 서명 키 | **개인키는 환경변수, 공개키는 config 저장소** | RS256 | ★아래 설명을 반드시 읽습니다 |
 
-### 4-3. Config 저장소와 application.yml의 경계
+### 4-5. 비밀값은 config 저장소에 넣지 않습니다
 
-- **Config 저장소의 `<서비스명>.yml`** — 여러 서비스가 공유하거나, 재배포 없이 바꿀 수 있어야 하는 값입니다. Config 서버가 이 저장소를 읽어 각 서비스에 내려줍니다
-- **레포 안 `src/main/resources/application.yml`** — 그 서비스 고유의 값이며 바뀔 일이 거의 없는 것입니다 (서비스명, 포트, 동작 스위치 등)
-- **환경변수** — 위 둘 어디에도 적으면 안 되는 비밀값입니다
+**`paw-trail/config` 는 공개 저장소입니다.** 비밀번호·개인키·시크릿은 어느 계층에도 넣지 않고, 자리만 `${환경변수}` 형태로 남깁니다.
 
----
+```yaml
+spring:
+  datasource:
+    password: ${SERVICE_DB_PASSWORD}
+```
+
+**기본값을 함께 적지 않습니다.** `${SERVICE_DB_PASSWORD:1234}` 처럼 쓰면 환경 변수를 빠뜨려도 접속이 되어 버려 누락이 영영 드러나지 않습니다. 환경 변수가 없으면 기동이 실패하는 편이 낫습니다.
+
+**RS256 키는 개인키와 공개키를 다르게 다룹니다.**
+
+- **개인키**(auth 가 토큰에 서명) — 환경 변수. 유출되면 누구나 유효한 토큰을 만들 수 있습니다
+- **공개키**(게이트웨이가 서명 검증) — config 저장소에 둡니다. 검증에만 쓰이므로 공개되어도 무해합니다
+
+**한 번 커밋한 값은 지워도 이력에 남습니다.** 되돌리는 것으로 끝나지 않으며 해당 키를 새로 발급해야 합니다.
+
+### 4-6. 값을 바꾸면 언제 반영되는가
+
+| 바꾼 것 | 필요한 작업 |
+|---|---|
+| config 저장소의 값 | `main` 에 커밋하면 끝입니다. 설정 서버는 다시 띄우지 않아도 됩니다 |
+| 이미 떠 있는 서비스에 반영 | `POST /actuator/refresh` 또는 재기동 |
+| 레포 안 `application.yml` | 재배포 |
+| 환경 변수 | 컨테이너 재시작 |
+
+`refresh` 는 데이터베이스 커넥션 풀까지 다시 만듭니다. 그래서 데이터베이스를 승격했을 때 주소만 바꾸고 재배포 없이 전환할 수 있습니다. 이는 config 1계층의 아래 두 줄에 달려 있으므로 지우지 않습니다.
+
+```yaml
+spring:
+  cloud:
+    refresh:
+      extra-refreshable: javax.sql.DataSource,com.zaxxer.hikari.HikariDataSource
+      never-refreshable: ""
+```
+
+없으면 프로퍼티만 다시 바인딩되고 **커넥션 풀은 옛 주소를 그대로 물고 있습니다.** `refresh` 응답이 정상이고 바뀐 키가 나와도 그렇습니다.
+
+### 4-7. 설정이 제대로 내려오는지 확인하기
+
+```
+http://localhost:8888/<서비스명>/local
+```
+
+응답의 `propertySources` 배열이 **어느 계층 파일에서 온 값인지까지 보여 주며, 배열 앞이 우선순위가 높은 쪽**입니다.
+
+**`.yml` · `.properties` · `.json` 주소는 쓸 수 없습니다.** 설정 서버가 그 주소에서 서비스명과 프로파일을 하이픈으로 가르는데, 우리 서비스명은 모두 `place-service` 처럼 하이픈을 포함하고 있어 400 이 납니다.
+
+포트가 8080 으로 뜬다면 2계층 파일을 못 찾은 것입니다. 파일명이 `spring.application.name` 과 정확히 같은지 확인합니다. 다르면 **오류 없이 그 계층만 빠진 채 내려갑니다.**
 
 ## 5. 4계층 — 왜 이렇게 나누는가
 
