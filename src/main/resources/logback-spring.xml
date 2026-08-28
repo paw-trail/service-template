@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  로깅 설정임
+
+  파일 이름이 반드시 logback-spring.xml 이어야 함
+  logback.xml 로 두면 스프링 확장이 걸리지 않아 <springProfile> 과 <springProperty> 가
+  오류 없이 조용히 무시됨
+
+  구조
+    콘솔 appender 는 Boot 기본 설정(defaults.xml)을 가져다 씀
+    LOKI appender 는 공통 모듈 jar 의 logback-loki-appender.xml 에서 가져옴
+-->
+<configuration>
+
+    <!-- Boot 이 제공하는 기본 변수와 콘솔 appender 정의임 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <!--
+      application.yml 의 값을 logback 변수로 끌어옴
+      ★ include 보다 먼저 선언해야 공통 모듈 쪽 XML 에서 참조할 수 있음
+    -->
+    <springProperty name="appName" source="spring.application.name" defaultValue="unknown"/>
+    <springProperty name="lokiUrl" source="app.logging.loki.url"
+                    defaultValue="http://localhost:3100/loki/api/v1/push"/>
+
+    <!-- 공통 모듈 jar 안의 LOKI appender 정의임 -->
+    <include resource="logback-loki-appender.xml"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+
+        <!--
+          local 이 아닐 때만 Loki 로 보냄
+          local 은 IntelliJ 에서 도는 경우이고 dev 는 컨테이너에서 도는 경우임
+
+          프로퍼티로 켜고 끄지 않는 이유
+            logback 에서 프로퍼티 조건 분기(<if>)를 쓰려면 Janino 라이브러리가 필요한데
+            로깅 스위치 하나 때문에 서비스 17개가 그 의존성을 나눠 질 이유가 없음
+        -->
+        <springProfile name="!local">
+            <appender-ref ref="LOKI"/>
+        </springProfile>
+    </root>
+
+</configuration>
