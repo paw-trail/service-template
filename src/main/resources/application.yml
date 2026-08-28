@@ -1,11 +1,26 @@
 # ─────────────────────────────────────────────────────────────
-# 복제 후 아래 표시된 값을 이 서비스에 맞게 바꿉니다.
-#   spring.application.name   서비스명
-#   server.port               README의 포트 배정표 참고
-#   spring.datasource.url     DB명
+# 복제 후 아래 표시된 값을 이 서비스에 맞게 바꿈
+#   spring.application.name    서비스명
+#   server.port                README 의 포트 배정표 참고
+#   spring.datasource.url      DB 명
 #   spring.datasource.username 서비스 전용 계정
 # ─────────────────────────────────────────────────────────────
 spring:
+  # config 서버가 아직 없으므로 찾으러 가지 않게 함
+  # 이 줄이 없으면 기동과 contextLoads() 가 ImportException 으로 실패함
+  # config-server 레포가 생기면 걷어내고 spring.config.import 로 바꿀 자리임
+  cloud:
+    config:
+      enabled: false
+
+  # 아무도 프로파일을 지정하지 않으면 local 로 봄
+  # active 가 아니라 default 인 것이 중요함
+  #   active  는 강제로 local 이라 컨테이너에서 덮어쓸 때 헷갈림
+  #   default 는 안 정해주면 local 이라 컨테이너의 SPRING_PROFILES_ACTIVE=dev 가 이김
+  # 덕분에 IntelliJ 는 실행 구성에 환경변수를 안 넣어도 local 로 돌고 Loki 전송이 꺼짐
+  profiles:
+    default: local
+
   application:
     name: template-service
 
@@ -16,9 +31,9 @@ spring:
 
   jpa:
     hibernate:
-      # 스키마는 Flyway가 관리합니다. 애플리케이션은 검증만 하며,
-      # 엔티티와 실제 테이블이 어긋나면 기동에 실패합니다.
-      # update 나 create 로 바꾸면 공용 DB의 데이터가 사라질 수 있습니다.
+      # 스키마는 Flyway 가 관리함
+      # 애플리케이션은 검증만 하며 엔티티와 실제 테이블이 어긋나면 기동에 실패함
+      # update 나 create 로 바꾸면 공용 DB 의 데이터가 사라질 수 있음
       ddl-auto: validate
     open-in-view: false
     properties:
@@ -27,7 +42,11 @@ spring:
 
   flyway:
     enabled: true
-    locations: classpath:db/migration/common,classpath:db/migration
+    # 두 경로가 형제여야 함
+    # db/migration 은 db/migration/common 의 상위라서 Flyway 가 앞의 것을 버림
+    #   Discarding location ... as it is a sub-location of ...
+    # 결과는 우연히 맞았지만 공통 V1~V19 와 서비스 V20~ 의 대역 분리가 성립하지 않았음
+    locations: classpath:db/migration/common,classpath:db/migration/service
 
   data:
     redis:
@@ -44,10 +63,10 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-    # 스프링 카프카는 Observation이 기본 false입니다.
-    # 켜지 않으면 이벤트를 건너가는 순간 분산 추적이 끊기고, 오류가 나지 않아
-    # 트레이스를 직접 열어보기 전까지 알 수 없습니다.
-    # 프로듀서만 켜면 헤더는 실려 가지만 컨슈머가 무시하므로 둘 다 켭니다.
+    # 스프링 카프카는 Observation 이 기본 false 임
+    # 켜지 않으면 이벤트를 건너가는 순간 분산 추적이 끊기고 오류가 나지 않아
+    # 트레이스를 직접 열어보기 전까지 알 수 없음
+    # 프로듀서만 켜면 헤더는 실려 가지만 컨슈머가 무시하므로 둘 다 켬
     template:
       observation-enabled: true
     listener:
@@ -74,23 +93,29 @@ management:
       show-details: always
   tracing:
     sampling:
-      # 개발 중에는 전량 추적합니다. 부하 테스트나 배포 시에는 낮춥니다.
+      # 개발 중에는 전량 추적함
+      # 부하 테스트나 배포 시에는 낮춤
       probability: 1.0
     export:
       zipkin:
-        # Boot 4에서 management.zipkin.tracing.endpoint로부터 옮겨온 경로입니다.
-        # 옛 경로를 쓰면 오류 없이 무시되어 Zipkin으로 아무것도 전송되지 않습니다.
+        # Boot 4 에서 management.zipkin.tracing.endpoint 로부터 옮겨온 경로임
+        # 옛 경로를 쓰면 오류 없이 무시되어 Zipkin 으로 아무것도 전송되지 않음
         endpoint: http://localhost:9411/api/v2/spans
 
 app:
+  logging:
+    loki:
+      # logback-spring.xml이 이 값을 읽어 appender 의 전송 주소로 씀
+      # 컨테이너에서 돌 때는 loki:3100 이 되어야 하며 나중에 application-dev.yml 로 분리할 자리임
+      url: http://localhost:3100/loki/api/v1/push
   auditor:
-    # 인증 없이 도는 배치가 감사 컬럼에 남길 이름입니다.
-    # 배치 서비스만 ingest-batch, extract-batch 등으로 바꿉니다.
+    # 인증 없이 도는 배치가 감사 컬럼에 남길 이름임
+    # 배치 서비스만 ingest-batch, extract-batch 등으로 바꿈
     system-name: SYSTEM
   outbox:
     relay:
-      # 미발행 이벤트를 회수하는 스케줄러입니다.
-      # 이벤트를 발행하는 서비스에서만, 그중 한 인스턴스에서만 켭니다.
+      # 미발행 이벤트를 회수하는 스케줄러임
+      # 이벤트를 발행하는 서비스에서만, 그중 한 인스턴스에서만 켬
       enabled: false
 
 logging:
