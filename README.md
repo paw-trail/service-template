@@ -483,7 +483,9 @@ docker compose --profile infra --profile platform up -d
 
 ### 1-4. DB를 사용하지 않는 서비스라면
 
-verdict, congestion 처럼 DB 가 없는 서비스는 **네 군데를 지워야 합니다.** 한 곳만 고치면 컴파일이나 기동이 실패하므로 아래 순서대로 함께 처리합니다.
+verdict, congestion, route 처럼 DB 가 없는 서비스는 **네 군데를 지워야 합니다.** 한 곳만 고치면 컴파일이나 기동이 실패하므로 아래 순서대로 함께 처리합니다.
+
+**`extract` 는 이 절을 그대로 따르지 않습니다.** 소유 DB 는 없지만 Spring Batch 가 실행 이력 테이블을 요구하므로, 어디에 둘지 정해진 뒤에 판단합니다. 9장을 먼저 봅니다.
 
 > **왜 지워야 하는가** — 공통 모듈은 클래스패스에 `spring-data-jpa` 가 있으면 JPA 관련 설정을 자동으로 켭니다. DB 가 없는 서비스에서 켜지면 `entityManagerFactory` Bean 을 찾지 못해 기동에 실패합니다. 의존성을 지우면 자동 설정도 함께 꺼집니다.
 
@@ -1755,7 +1757,9 @@ com.pawtrail.place
 
 ## 8. DB가 없는 서비스 (verdict)
 
-verdict와 congestion이 여기 해당합니다. 위 형태에서 저장 관련 계층이 통째로 빠집니다.
+verdict, congestion, route 가 여기 해당합니다. 위 형태에서 저장 관련 계층이 통째로 빠집니다.
+
+route 가 여기 들어온 것은 나중입니다. 동물병원이 place 로 편입되면서 소유하던 DB 가 사라졌고, 남은 일이 카카오맵 경로 계산뿐이 되었습니다.
 
 ```
 com.pawtrail.verdict
