@@ -27,7 +27,7 @@
 
 **① 서비스마다 DB 가 따로 있고, 남의 DB 에는 접속할 수 없습니다.** PostgreSQL 인스턴스는 하나지만 그 안에 서비스별 DB 와 전용 계정이 나뉘어 있습니다. 다른 서비스의 데이터가 필요하면 **그 서비스의 API 를 호출하거나 이벤트를 받습니다.**
 
-**② 인증은 게이트웨이가 끝냅니다.** 각 서비스는 JWT 를 직접 다루지 않습니다. 게이트웨이가 토큰을 검증한 뒤 `X-User-Id`·`X-User-Role` 헤더로 넣어주고, 공통 모듈의 필터가 그것을 읽어 `SecurityContext` 를 채웁니다.
+**② 인증은 게이트웨이가 끝냅니다.** 각 서비스는 JWT 를 직접 다루지 않습니다. 게이트웨이가 토큰을 검증한 뒤 `X-User-Id`·`X-User-Role` 헤더로 넣어주고, 공통 모듈의 필터가 그것을 읽어 `SecurityContext` 를 채웁니다. **게이트웨이는 헤더를 넣기 전에 바깥에서 들어온 같은 이름의 헤더를 먼저 지웁니다.** 그래야 이 헤더를 그대로 믿는 것이 성립합니다.
 
 **③ 이벤트는 카프카로 바로 보내지 않습니다.** 자기 DB 의 `outbox` 테이블에 먼저 저장하고, 커밋된 뒤에 별도 스레드가 발행합니다. "데이터는 저장됐는데 이벤트는 안 나갔다"를 막기 위한 구조이며, 공통 모듈이 전부 처리하므로 사용하는 쪽은 한 줄만 부르면 됩니다.
 
@@ -267,6 +267,57 @@ app:
 - 데이터베이스를 쓰지 않는 서비스는 `server.port` 만 적습니다
 
 설정 계층과 값을 어디에 둘지는 4장에, `config` 저장소 자체의 규칙은 그 저장소의 README에 있습니다.
+
+#### 게이트웨이 라우트 열기
+
+**같은 저장소에서 한 가지를 더 해야 합니다.** 위 파일만 만들면 서비스는 뜨지만 **브라우저에서 부를 수 없습니다.**
+
+게이트웨이는 라우트 목록에 적힌 경로만 뒤로 넘기고, 없는 경로는 404를 돌려줍니다. 유레카에 등록된 서비스를 자동으로 라우팅하지 않습니다. 막아야 할 경로(`/internal/**` 등)까지 함께 열리기 때문입니다.
+
+`config` 저장소의 `gateway-server.yml` 에 라우트를 추가합니다.
+
+```yaml
+- id: place-service
+  uri: lb://place-service
+  predicates:
+    - Path=/api/v1/places/{placeId},/api/v1/places/{placeId}/documents
+```
+
+- **`uri` 의 이름**은 `spring.application.name` 과 같아야 합니다. `lb://` 는 유레카에서 실제 주소를 받아 오라는 뜻입니다
+- **접두사가 여러 개**인 서비스가 있습니다. `user-service` 는 `/users`·`/favorites`·`/visits`·`/itineraries` 넷을 가집니다
+- **관리자 경로는 따로 적습니다.** `/api/v1/admin/{도메인}/**` 형태이며 두 번째 마디가 어느 서비스인지를 정합니다
+
+**`/api/v1/places/` 아래는 주의합니다.** 같은 접두사를 여섯 서비스가 나누어 씁니다. 장소 상세 화면에서 브라우저가 여러 개를 한꺼번에 부르기 때문이며, 경로는 장소를 중심으로 짜여 있고 소유 서비스는 갈려 있습니다.
+
+```
+/api/v1/places/{placeId}                place
+/api/v1/places/{placeId}/documents      place
+/api/v1/places/{placeId}/verdict        verdict
+/api/v1/places/{placeId}/reviews        review
+/api/v1/places/{placeId}/conflicts      policy
+/api/v1/places/{placeId}/congestion     congestion
+```
+
+여기에 `/**` 를 쓰면 **하위 경로를 모두 먹어 나머지로 갈 요청이 전부 첫 라우트로 갑니다.** 게이트웨이는 처음 맞는 라우트에서 멈추기 때문입니다. `{placeId}` 는 한 마디만 맞추므로 여섯이 서로 겹치지 않고, 순서를 신경 쓰지 않아도 됩니다.
+
+대신 **하위 경로를 새로 만들면 라우트도 함께 추가해야 합니다.**
+
+**인증 없이 열어야 하는 경로가 있다면 그것도 따로 적습니다.** 목록에 없으면 토큰을 확인하므로 401이 납니다.
+
+```yaml
+app:
+  gateway:
+    permit-all:
+      - /api/v1/auth/login
+```
+
+라우트를 추가한 뒤에는 게이트웨이가 실제로 물고 있는지 확인합니다.
+
+```powershell
+curl.exe http://localhost:8080/actuator/gateway/routes
+```
+
+목록에 없다면 게이트웨이가 설정을 다시 읽지 않은 것이므로 `POST /actuator/refresh` 를 호출하거나 재기동합니다.
 
 #### Dockerfile
 
@@ -1227,6 +1278,10 @@ com.pawtrail.common
     │                                               게이트웨이가 넣어준 X-User-Id·X-User-Role 헤더를 읽어
     │                                               SecurityContext 를 채웁니다. 뒤쪽 서비스는 JWT 를 직접
     │                                               다루지 않습니다. 토큰 검증은 게이트웨이에서 끝났습니다.
+    │                                               헤더를 검사 없이 믿는 것은 게이트웨이가 바깥에서 들어온
+    │                                               같은 이름의 헤더를 먼저 지우기 때문입니다. 그래서 이
+    │                                               서비스에 직접 요청을 보내면 헤더가 그대로 신뢰됩니다.
+    │                                               보안그룹으로 게이트웨이 밖에서 닿지 못하게 막아 둡니다.
     │                                               Bean 이 아니라 SecurityConfig 에서 직접 생성합니다.
     │                                               Bean 으로 두면 서블릿 전역 필터에도 등록돼 두 번 돕니다
     ├── handler/CustomSecurityExceptionHandler.java (class)
