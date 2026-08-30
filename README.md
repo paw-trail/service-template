@@ -27,7 +27,7 @@
 
 **① 서비스마다 DB 가 따로 있고, 남의 DB 에는 접속할 수 없습니다.** PostgreSQL 인스턴스는 하나지만 그 안에 서비스별 DB 와 전용 계정이 나뉘어 있습니다. 다른 서비스의 데이터가 필요하면 **그 서비스의 API 를 호출하거나 이벤트를 받습니다.**
 
-**② 인증은 게이트웨이가 끝냅니다.** 각 서비스는 JWT 를 직접 다루지 않습니다. 게이트웨이가 토큰을 검증한 뒤 `X-User-Id`·`X-User-Role` 헤더로 넣어주고, 공통 모듈의 필터가 그것을 읽어 `SecurityContext` 를 채웁니다.
+**② 인증은 게이트웨이가 끝냅니다.** 각 서비스는 JWT 를 직접 다루지 않습니다. 게이트웨이가 토큰을 검증한 뒤 `X-User-Id`·`X-User-Role` 헤더로 넣어주고, 공통 모듈의 필터가 그것을 읽어 `SecurityContext` 를 채웁니다. **게이트웨이는 헤더를 넣기 전에 바깥에서 들어온 같은 이름의 헤더를 먼저 지웁니다.** 그래야 이 헤더를 그대로 믿는 것이 성립합니다.
 
 **③ 이벤트는 카프카로 바로 보내지 않습니다.** 자기 DB 의 `outbox` 테이블에 먼저 저장하고, 커밋된 뒤에 별도 스레드가 발행합니다. "데이터는 저장됐는데 이벤트는 안 나갔다"를 막기 위한 구조이며, 공통 모듈이 전부 처리하므로 사용하는 쪽은 한 줄만 부르면 됩니다.
 
@@ -267,6 +267,99 @@ app:
 - 데이터베이스를 쓰지 않는 서비스는 `server.port` 만 적습니다
 
 설정 계층과 값을 어디에 둘지는 4장에, `config` 저장소 자체의 규칙은 그 저장소의 README에 있습니다.
+
+#### 게이트웨이에 이 서비스의 라우트 열기
+
+**바로 위 작업과 짝입니다.** 설정 파일만 만들면 서비스는 정상으로 뜨고 유레카에도 등록되지만, **브라우저에서 이 서비스의 API 를 부를 수 없습니다.**
+
+```
+서비스는 UP · 유레카 대시보드에도 보임
+브라우저 → 게이트웨이 → 404 ROUTE_NOT_FOUND
+```
+
+게이트웨이는 라우트 목록에 없는 경로를 그냥 404로 돌려보냅니다. **이 서비스의 로그에는 아무것도 남지 않으므로** 서비스를 아무리 들여다봐도 원인이 드러나지 않습니다.
+
+`paw-trail/config` 저장소의 `gateway-server.yml` 에서 `routes` 아래에 한 덩어리를 추가합니다.
+
+```yaml
+            - id: place-service
+              uri: lb://place-service
+              predicates:
+                - Path=/api/v1/places/{placeId},/api/v1/places/{placeId}/documents
+```
+
+| 항목 | 규칙 |
+|---|---|
+| `id` | 자유롭게 정하지만 서비스명과 같게 둡니다 |
+| `uri` | `lb://` 뒤의 이름이 **그 서비스의 `spring.application.name` 과 같아야 합니다.** 다르면 유레카에서 주소를 찾지 못해 503이 납니다 |
+| `predicates` | 이 서비스로 보낼 경로입니다. 쉼표로 여러 개를 적을 수 있습니다 |
+
+한 서비스가 접두사를 여러 개 가지는 경우도 있습니다. 여러 리소스를 한 서비스가 소유하기 때문입니다.
+
+```yaml
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/users/**,/api/v1/favorites/**,/api/v1/visits/**,/api/v1/itineraries/**
+
+            - id: pet-service
+              uri: lb://pet-service
+              predicates:
+                - Path=/api/v1/pets/**,/api/v1/breeds
+```
+
+**`/api/v1/places/` 아래에는 `/**` 를 쓰지 않습니다.**
+
+이 접두사 아래에는 서비스 6개가 섞여 있습니다. 장소 상세 화면에서 브라우저가 여러 개를 한꺼번에 부르기 때문이며, 경로는 장소를 중심으로 짜여 있고 소유 서비스는 갈려 있습니다.
+
+| 경로 | 가는 곳 |
+|---|---|
+| `/api/v1/places/{placeId}` | place |
+| `/api/v1/places/{placeId}/documents` | place |
+| `/api/v1/places/{placeId}/verdict` | verdict |
+| `/api/v1/places/{placeId}/reviews` | review |
+| `/api/v1/places/{placeId}/conflicts` | policy |
+| `/api/v1/places/{placeId}/congestion` | congestion |
+
+여기에 `Path=/api/v1/places/**` 를 쓰면 **하위 경로를 모두 먹어 나머지 다섯으로 갈 요청이 전부 첫 라우트로 갑니다.** 게이트웨이는 처음 맞는 라우트에서 멈추기 때문입니다. 증상은 "장소 상세에서 판정만 안 뜬다" 인데 게이트웨이 로그에는 아무것도 남지 않습니다.
+
+`{placeId}` 는 **한 마디만 맞추므로** 여섯이 서로 겹치지 않고, 그래서 목록에 적는 순서를 신경 쓰지 않아도 됩니다.
+
+**place 에 하위 경로가 새로 생기면 라우트도 함께 추가합니다.** 추가하지 않으면 404입니다.
+
+**관리자 경로는 따로 적습니다.**
+
+**두 번째 마디가 어느 서비스인지를 정합니다.** 예외 없이 이 규칙을 지키므로 새 관리자 경로를 만들 때도 같은 모양으로 둡니다.
+
+```yaml
+            - id: admin-places
+              uri: lb://place-service
+              predicates:
+                - Path=/api/v1/admin/places/**
+```
+
+**인증 없이 열어야 하는 경로가 있다면** 같은 파일의 `app.gateway.permit-all` 에도 추가합니다. 여기 없는 경로는 전부 토큰을 확인합니다.
+
+```yaml
+app:
+  gateway:
+    permit-all:
+      - /api/v1/auth/login
+```
+
+**이 목록에 넣은 경로에는 게이트웨이가 `X-User-Id` 를 넣어주지 않습니다.** 그 서비스가 자기 보안 설정을 따로 정의한다면 **그쪽에서도 같은 경로를 열어야 하며, 한쪽만 열면 401이 납니다.** 같은 목록이 두 곳에 존재하는 셈이므로, 고칠 때는 양쪽을 함께 봅니다.
+
+**확인은 실제로 도는 목록으로 합니다.** 게이트웨이를 다시 띄우거나 `POST /actuator/refresh` 를 부른 뒤 아래를 봅니다.
+
+```powershell
+curl.exe http://localhost:8080/actuator/gateway/routes
+```
+
+내가 쓴 것과 실제로 도는 것이 다를 수 있으므로, 어긋나 보이면 설정 서버가 내려주는 값도 함께 대조합니다.
+
+```powershell
+curl.exe http://localhost:8888/gateway-server/local
+```
 
 #### Dockerfile
 
@@ -1255,7 +1348,11 @@ com.pawtrail.common
     │                                               게이트웨이가 넣어준 X-User-Id·X-User-Role 헤더를 읽어
     │                                               SecurityContext 를 채웁니다. 뒤쪽 서비스는 JWT 를 직접
     │                                               다루지 않습니다. 토큰 검증은 게이트웨이에서 끝났습니다.
-    │                                               Bean 이 아니라 SecurityConfig 에서 직접 생성합니다.
+    │                                               게이트웨이는 헤더를 넣기 전에 바깥에서 들어온 같은 이름의
+    │                                               헤더를 먼저 지우므로 이 필터가 값을 그대로 믿어도 됩니다.
+    │                                               반대로 이 서비스에 직접 요청을 보내면 그 헤더가 그대로
+    │                                               신뢰되므로, 보안그룹으로 게이트웨이 밖에서 닿지 못하게 막아 둡니다.
+    │                                               Bean 이 아니라 공통 모듈의 보안 자동 설정에서 직접 생성합니다.
     │                                               Bean 으로 두면 서블릿 전역 필터에도 등록돼 두 번 돕니다
     ├── handler/CustomSecurityExceptionHandler.java (class)
     │                                               401·403 을 공통 응답 형식으로 반환합니다.
