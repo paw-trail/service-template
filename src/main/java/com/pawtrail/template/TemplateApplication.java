@@ -21,7 +21,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * 스캔 범위를 따로 지정하지 않은 이유는 기본값이 이 클래스가 속한 패키지이기 때문입니다.
  * 복제 후 패키지명을 바꿀 때 고쳐야 할 문자열이 하나 줄어듭니다.
  *
- * DB를 사용하지 않는 서비스(verdict, congestion)는
+ * DB를 사용하지 않는 서비스(verdict, congestion, route)는
  * 아래 @EntityScan과 @EnableJpaRepositories 두 줄과 해당 import를 지웁니다.
  * build.gradle의 JPA·QueryDSL블록도 함께 지워야 하며,
  * 한쪽만 고치면 컴파일이 실패합니다.
