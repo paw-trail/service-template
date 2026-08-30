@@ -181,15 +181,13 @@ rootProject.name = 'place'
 
 #### gradle.properties
 
-공통 모듈 버전을 최신으로 맞춥니다. 최신 버전은 조직 Packages 페이지에서 확인합니다.
+공통 모듈 버전을 최신으로 맞춥니다. **템플릿에 적힌 값이 최신이 아닐 수 있으므로** 조직 Packages 페이지에서 확인한 뒤 다르면 고칩니다.
 
 ```properties
-# 바꾸기 전
-commonVersion=0.0.1
-
-# 바꾸기 후 (예시)
 commonVersion=0.0.4
 ```
+
+이 값만 바꾸고 다시 빌드하면 새 버전이 내려옵니다. 올리는 절차와 주의할 점은 3-3에 있습니다.
 
 #### src/main/resources/application.yml
 
@@ -473,7 +471,7 @@ place_db — place, place_source_link, place_facility
 
 ## 의존
 - 호출하는 서비스: ingest (/internal/raw)
-- 구독하는 이벤트: place.ingested
+- 구독하는 이벤트: 없음
 - 발행하는 이벤트: place.updated
 
 ## 로컬 실행
@@ -929,7 +927,7 @@ GitHub Packages는 공개 저장소라도 내려받을 때 인증을 요구합�
 
 ```properties
 # gradle.properties
-commonVersion=0.0.1
+commonVersion=0.0.4
 
 # 라이브러리 버전도 같은 곳에서 관리합니다
 querydslVersion=7.6
