@@ -18,7 +18,7 @@
 | 로컬에서 서비스를 띄워보려 한다 | **2장**. 무엇을 Docker 로 띄우고 무엇을 IntelliJ 에서 실행하는지 나옵니다 |
 | 공통 모듈이 무엇인지 모르겠다 | **6장**. 무엇이 들어 있고 어떻게 쓰는지 코드 예시와 함께 있습니다 |
 | 코드를 어느 폴더에 둘지 모르겠다 | **5장**(왜 이렇게 나누는가) → **7장**(폴더마다 무엇을 두는가) |
-| 기동이 안 되거나 IntelliJ 가 빨간 줄을 긋는다 | **1-7**, **10장** |
+| 기동이 안 되거나 IntelliJ 가 빨간 줄을 긋는다 | **1-7**, **1-8**, **10장** |
 | DB 를 쓰지 않는 서비스를 맡았다 | **1-4** → **8장** |
 
 **처음 읽는다면 1장 → 5장 → 6장 → 7장 순서를 권합니다.** 1장으로 환경을 만들고, 5장으로 왜 이렇게 나눴는지 이해한 뒤, 6장에서 공통으로 제공되는 것을 익히고, 7장에서 실제 파일을 어디에 만들지 확인하는 흐름입니다.
@@ -115,7 +115,42 @@ grep -rl "TemplateApplication" src | xargs sed -i "s/TemplateApplication/${CLASS
 
 #### Windows — PowerShell
 
-Git Bash를 쓸 수 없을 때만 사용합니다. 파일을 다시 쓰는 과정에서 인코딩이 바뀌면 한글 주석이 깨질 수 있으므로 **PowerShell 7 이상**에서 실행합니다.
+Git Bash를 쓸 수 없을 때만 사용합니다.
+
+**반드시 PowerShell 7 이상에서 실행합니다.** 윈도우에 기본으로 깔린 것은 5.1 이고, 시작 메뉴에서 이름이 갈립니다.
+
+```
+PowerShell            검은 아이콘, 7 이상
+Windows PowerShell    파란 아이콘, 5.1
+```
+
+지금 어느 쪽인지는 아래로 확인합니다.
+
+```powershell
+$PSVersionTable.PSVersion
+```
+
+7 이 없으면 설치합니다.
+
+```powershell
+winget install --id Microsoft.PowerShell --source winget
+```
+
+##### 5.1 로 실행하면 파일이 깨집니다
+
+경고가 아니라 실제로 손상됩니다. 아래 스크립트의 `Set-Content -Encoding utf8` 이 5.1 에서는 **모든 파일 앞에 BOM 을 붙이고, 표현하지 못하는 한글을 물음표로 바꿔 저장합니다.** 되돌릴 수 없습니다.
+
+증상이 헷갈립니다. 한글이 깨지고 줄이 붙어 보이는데, 그것만으로는 **파일이 손상된 것인지 콘솔이 못 읽는 것인지 구분되지 않습니다.** 콘솔 문제라면 파일은 멀쩡하므로 판별이 필요합니다.
+
+```powershell
+Format-Hex -Path src\test\resources\application.yml -Count 48
+```
+
+앞에 `EF BB BF` 가 있거나 본문에 `3F` 가 섞여 있으면 **파일이 손상된 것입니다.** `3F` 는 물음표의 코드값이며, 한글이 있어야 할 자리에 그것이 있다는 뜻입니다.
+
+바이트를 UTF-8 로 읽어 보는 방식으로는 이 손상을 찾지 못합니다. BOM 도 물음표도 유효한 UTF-8 이라 오류가 나지 않습니다.
+
+손상되었다면 **다시 복제하는 편이 빠릅니다.** 어느 파일이 깨졌는지 하나씩 찾는 것보다 확실하고, BOM 은 어차피 전 파일에 붙어 있습니다.
 
 ```powershell
 $NEW   = "place"    # 소문자 서비스명
@@ -205,7 +240,7 @@ rootProject.name = 'place-service'
 공통 모듈 버전을 최신으로 맞춥니다. **템플릿에 적힌 값이 최신이 아닐 수 있으므로** 조직 Packages 페이지에서 확인한 뒤 다르면 고칩니다.
 
 ```properties
-commonVersion=0.0.4
+commonVersion=0.0.7
 ```
 
 이 값만 바꾸고 다시 빌드하면 새 버전이 내려옵니다. 올리는 절차와 주의할 점은 3-3에 있습니다.
@@ -247,6 +282,20 @@ spring:
 `optional:` 을 붙이는 이유는 서비스 하나만 띄워 확인하는 일이 잦기 때문입니다. 이것이 없으면 매번 설정 서버를 함께 띄워야 하고 테스트도 실패합니다. 다만 **데이터베이스 주소가 내려오지 않으므로 실제 기동은 설정 서버가 떠 있어야 합니다.**
 
 `${CONFIG_HOST:localhost}` 에 기본값을 붙이는 것은 의도입니다. 로컬에서는 언제나 `localhost:8888` 이므로 기본값이 정답이고, 없으면 개발자마다 실행 구성에 환경 변수를 넣어야 합니다.
+
+#### src/test/resources/application.yml
+
+**이 파일도 서비스 이름을 고쳐야 합니다.** 위 파일과 이름이 같아 놓치기 쉬운 자리입니다.
+
+```yaml
+spring:
+  application:
+    name: place-service     # 바꾸기 전에는 template-service
+```
+
+이 파일이 따로 있는 이유는 2-7에 있습니다. 테스트는 설정 서버를 쓰지 않으므로 여기 적힌 값으로만 돕니다.
+
+**안 고쳐도 빌드가 통과하기 때문에 더 위험합니다.** 테스트가 `template-service` 라는 이름으로 돌게 되고, 나중에 통합 테스트를 붙이면 유레카 등록 이름까지 어긋납니다. 그때는 원인이 이 파일이라는 것이 드러나지 않습니다.
 
 #### config 저장소에 이 서비스의 설정 파일 만들기
 
@@ -429,7 +478,17 @@ docker run --rm --entrypoint sh <이미지> -c "ls -lh /app"
 
 #### Jenkinsfile
 
-파이프라인 본체는 공유 라이브러리에 있으므로 파라미터 3개만 채웁니다. `deployNode`는 이 서비스가 올라갈 노드이고, `instances`는 띄울 개수입니다. 어느 노드에 몇 개인지는 9장의 분류표와 인프라 문서를 따릅니다.
+파이프라인 본체는 공유 라이브러리에 있으므로 파라미터 3개만 채웁니다. `deployNode`는 이 서비스가 올라갈 노드이고, `instances`는 띄울 개수입니다.
+
+노드는 **부하 성격**으로 나뉩니다. 도메인 유사성이 아니라 그 축을 쓰는 이유는, 비슷한 도메인끼리 묶으면 부하가 배치를 따라가지 않아 한쪽만 터지고 다른 쪽은 노는 구조가 되기 때문입니다.
+
+| 노드 | 서비스 | 성격 |
+|---|---|---|
+| `core` | verdict ×3 · search ×2 · place · policy | 핫패스. 스케일아웃 대상 |
+| `app` | auth · user · pet · report · notification · congestion · route | 콜드패스. 1개씩 |
+| `edge` | nginx · gateway · eureka · config | 진입점과 플랫폼 |
+
+`ingest` 와 `extract` 는 상시 기동하지 않으므로 이 표에 없습니다. 배포 방식과 노드 구성의 근거는 인프라 문서에 있습니다.
 
 **`serviceName` 은 저장소명을 그대로 씁니다.** 이 값이 그대로 이미지 태그가 되기 때문입니다. 짧게 적으면 Jenkins 는 `ghcr.io/paw-trail/place` 로 올리는데 배포는 `ghcr.io/paw-trail/place-service` 를 내려받으려 하므로 `manifest unknown` 으로 실패합니다. **배포 시점에야 드러나고 메시지가 이름 문제라는 것을 알려주지 않습니다.**
 
@@ -459,6 +518,14 @@ springServicePipeline(
 바꾸기 전   db/migration/service/V20__template.sql   (예시 내용)
 바꾸기 후   db/migration/service/V20__place.sql      (이 서비스의 테이블 정의)
 ```
+
+**`V20__template.sql` 을 반드시 지웁니다.** 새 파일만 만들고 옛 파일을 남겨 두면 같은 번호가 둘이 되어 기동이 실패합니다.
+
+```
+Found more than one migration with version 20
+```
+
+이름을 바꾸는 것이지 새로 만드는 것이 아니라고 읽어야 합니다. 메시지가 원인을 알려주기는 하지만, 새 파일을 만드는 흐름으로 작업하면 옛 파일을 지웠는지 확인하지 않게 됩니다.
 
 ```sql
 -- V20__place.sql 예시
@@ -701,7 +768,63 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
 
 시스템 환경변수를 직접 바꿨다면 **터미널 창을 새로 열어야** 반영됩니다.
 
-### 1-7. 처음 한 번 해두는 설정과 자주 겪는 것들
+### 1-7. 서비스를 실제로 띄우려면 환경변수가 필요합니다
+
+앞 단계까지는 빌드만 했습니다. 빌드는 데이터베이스 주소를 몰라도 통과하는데, 테스트가 자기 PostgreSQL 컨테이너를 직접 띄우기 때문입니다(2-7 참고).
+
+**IntelliJ 에서 실행 버튼을 누르는 순간부터는 다릅니다.** 실제 데이터베이스에 붙어야 하고 그 값들이 환경변수로 들어옵니다.
+
+| 이름 | 값 | 어디서 쓰이나 |
+|---|---|---|
+| `DB_HOST` | `localhost` | config 3계층의 `app.datasource.host` |
+| `SERVICE_DB_PASSWORD` | infra 저장소 `.env` 의 값 | config 1계층의 `spring.datasource.password` |
+
+서비스에 따라 더 필요할 수 있습니다. 인증 서비스는 토큰 서명에 쓰는 개인키를 `AUTH_JWT_PRIVATE_KEY_B64` 로 받습니다. **자기 서비스의 config 파일에서 `${...}` 로 적힌 것을 찾으면 그것이 목록입니다.**
+
+#### 어디에 넣는가
+
+```
+Run/Debug Configurations → 해당 실행 구성 → Environment variables
+```
+
+칸이 안 보이면 `Modify options` 에서 `Environment variables` 를 켭니다.
+
+**infra 저장소의 `.env` 에 적어 두어도 IntelliJ 는 그것을 읽지 않습니다.** 그 파일은 Docker Compose 가 읽는 것이고 IntelliJ 와는 무관합니다. 값이 두 곳에 존재하게 되는데, 실행 주체가 다르므로 어쩔 수 없습니다.
+
+한 곳만 관리하고 싶으면 OS 환경변수에 둡니다. IntelliJ 는 그것을 물려받고 Compose 도 `.env` 에 없으면 호스트 환경변수를 찾습니다.
+
+```powershell
+[Environment]::SetEnvironmentVariable("DB_HOST", "localhost", "User")
+```
+
+**IntelliJ 를 다시 시작해야 반영됩니다.**
+
+#### 빠뜨렸을 때 나오는 오류
+
+메시지가 원인을 알려주지 않으므로 형태를 외워 두는 편이 빠릅니다.
+
+```
+java.net.UnknownHostException: ${DB_HOST}
+```
+
+치환되지 않은 문자열이 그대로 주소로 쓰인 것입니다. **그 변수가 없다는 뜻입니다.**
+
+```
+FATAL: password authentication failed for user "place_svc"
+```
+
+**계정은 있고 비밀번호만 안 맞는 것입니다.** 계정 자체가 없으면 `role does not exist` 가 나옵니다. `SERVICE_DB_PASSWORD` 를 확인합니다.
+
+#### 데이터베이스가 떠 있어야 합니다
+
+```powershell
+cd ..\infra
+docker compose --profile db --profile infra --profile platform --profile tools up -d
+```
+
+`db` 프로파일이 PostgreSQL 을 띄우고, 초기화 스크립트가 데이터베이스 10개와 계정 10개를 만듭니다. 자세한 내용은 infra 저장소 README 에 있습니다.
+
+### 1-8. 처음 한 번 해두는 설정과 자주 겪는 것들
 
 서비스를 만들 때마다 반복해서 겪게 되므로 미리 읽어 둡니다.
 
@@ -1749,6 +1872,10 @@ com.pawtrail.place
 │
 ├── domain/                                         ── 이 서비스가 무엇인지 ──
 │   ├── model/Place.java (entity)                   데이터와 그 데이터를 바꾸는 규칙을 가집니다
+│   ├── enums/PlaceStatus.java (enum)               이 서비스의 값 타입입니다. 엔티티의 필드로 쓰이거나
+│   │                                               엔티티와 무관한 분류로 쓰입니다. 공통 모듈의
+│   │                                               entity/ 와 enums/ 가 형제인 것과 같은 배치이며,
+│   │                                               전 서비스가 쓰는 것만 공통에 둡니다(Role 등)
 │   ├── event/
 │   │   ├── PlaceEventProducer.java (interface)
 │   │   │                                           이벤트를 내보낸다는 약속입니다.
@@ -1841,9 +1968,10 @@ com.pawtrail.place
    저장하고, 이벤트를 기록하고, 응답을 조립하는 순서를 정합니다.
    "조건이 맞는지" 같은 판단은 여기서 하지 않고 domain 에 맡깁니다.
         ↓
-⑤ domain/model/Place.java
+⑤ domain/model/Place.java  ·  domain/enums/PlaceStatus.java
    데이터와 그 데이터를 바꾸는 규칙입니다. setter 대신
    update(...) 같은 의미 있는 메서드를 둡니다.
+   엔티티가 쓰는 값 타입은 enums/ 에 둡니다.
         ↓
 ⑥ domain/repository/PlaceRepository.java
    "저장한다"는 약속만 선언합니다. JPA 라는 단어가 나오지 않습니다.
@@ -1949,6 +2077,8 @@ com.pawtrail.verdict
 │   ├── model/
 │   │   ├── Verdict.java (record)                   판정 결과의 모양입니다
 │   │   └── Reason.java (record)                    항목별 이유와 근거입니다
+│   ├── enums/VerdictResult.java (enum)             가능·조건부·불가 같은 값 타입입니다.
+│   │                                               엔티티가 없는 서비스에도 이 자리가 필요합니다
 │   ├── engine/RuleEngine.java (class)              이 서비스의 핵심입니다. f(정책, 프로필) → 판정을
 │   │                                               수행합니다. 바깥을 전혀 모르는 순수 함수라 단위 테스트가
 │   │                                               쉽고, "8kg + 10kg 이하 → 가능", "안내견 단독 표기 → 불가"
