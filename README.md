@@ -500,7 +500,7 @@ place_db — place, place_source_link, place_facility
 - 발행하는 이벤트: place.updated
 
 ## 로컬 실행
-docker compose --profile infra --profile platform up -d
+infra 저장소에서 docker compose up -d
 이후 PlaceApplication 을 IntelliJ에서 실행합니다.
 ```
 
@@ -813,16 +813,20 @@ Kafka를 각자 로컬에 두는 이유는 반대입니다. 공용으로 쓰면 
 
 ### 2-2. Compose 프로파일
 
-| 프로파일 | 포함 | 언제 켜는가 |
-|---|---|---|
-| `infra` | Kafka, Redis | 거의 항상 |
-| `observability` | Prometheus, Grafana, Loki, Zipkin | 로그·메트릭·추적을 볼 때 |
-| `tools` | Kafka UI | 토픽에 메시지가 실제로 실렸는지 확인할 때 |
-| `db` | PostgreSQL | 공용 인스턴스를 쓰지 않고 실험할 때만 |
-| `platform` | gateway, eureka, config | 게이트웨이를 거친 호출이나 인증을 확인할 때 |
-| `edge` | nginx | 프론트엔드와 함께 확인할 때 |
-| `pipeline` | ingest, extract | 수집·추출 배치를 돌릴 때만 |
-| `app` | 도메인 서비스 전체 | 배포 검증 때만 |
+| 프로파일 | 포함 | 언제 켜는가 | 필수 |
+|---|---|---|---|
+| `infra` | Kafka, Redis | 거의 항상 | **필수** |
+| `platform` | gateway, eureka, config | 설정을 받고 게이트웨이를 거친 호출을 확인할 때 | **필수** |
+| `tools` | Kafka UI | 토픽에 메시지가 실제로 실렸는지 확인할 때 | 권장 |
+| `observability` | Prometheus, Grafana, Loki, Zipkin | 로그·메트릭·추적을 볼 때 | 선택 |
+| `db` | PostgreSQL | 공용 인스턴스를 쓸 수 없을 때만 | 선택 |
+| `edge` | nginx | 프론트엔드와 함께 확인할 때 | 선택 |
+| `pipeline` | ingest, extract | 수집·추출 배치를 돌릴 때만 | 선택 |
+| `app` | 도메인 서비스 전체 | 배포 검증 때만 | 선택 |
+
+`infra` 와 `platform` 이 필수인 이유는 **`platform` 이 빠지면 config-server가 없어 이 서비스가 데이터베이스 주소와 포트를 받지 못하고 기동에 실패하기 때문**입니다. 증상이 "포트가 8080으로 뜨고 datasource를 만들지 못함"으로 나타나 원인이 프로파일이라는 것이 드러나지 않습니다.
+
+기본 조합은 `infra,platform,tools` 이며 `infra` 저장소의 `.env` 에 지정되어 있습니다. 그 파일은 커밋되지 않으므로 각자 자기 환경에 맞게 바꿔도 됩니다. 조합별 안내와 메모리 배분은 `infra` 저장소의 README 3절에 있습니다.
 
 ```bash
 # infra 레포의 .env 에 평소 조합이 지정되어 있어 옵션 없이 뜹니다
@@ -836,6 +840,8 @@ docker compose down
 ```
 
 **`db` 프로파일은 평소에 켜지 않습니다.** PostgreSQL 은 공용 인스턴스를 쓰며, 로컬 인스턴스가 함께 떠 있으면 어느 쪽에 연결되었는지 헷갈립니다. `db` 로 띄운 컨테이너는 `docker compose down` 만으로는 내려가지 않으므로 `--profile db down` 을 사용합니다.
+
+**빌드할 때 쓰는 데이터베이스는 이 프로파일과 무관합니다.** `./gradlew build` 가 도는 동안에는 테스트가 자기 PostgreSQL 컨테이너를 직접 띄웠다가 끝나면 지웁니다. 그래서 `db` 프로파일을 켜 두지 않아도 빌드가 통과하고, 켜 두더라도 테스트는 그쪽을 쓰지 않습니다. 두 가지가 모두 Docker 위에서 돌지만 띄우는 주체가 다릅니다.
 
 `infra` 와 `platform` 을 띄운 뒤 자기 서비스를 IntelliJ 에서 실행하면, 서비스가 유레카에 등록되고 게이트웨이를 통해 호출할 수 있게 됩니다. 다른 서비스를 호출해야 한다면 그 서비스도 IntelliJ 에서 함께 띄웁니다.
 
