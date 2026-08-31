@@ -165,18 +165,39 @@ find src -name "Template*"
 
 ### 1-3. 직접 고쳐야 하는 파일
 
-치환 스크립트로 처리되지 않는 파일들입니다. 아래 예시는 모두 place 서비스를 만드는 경우이며, `place` 자리에 자기 도메인명을 넣습니다.
+치환 스크립트로 처리되지 않는 파일들입니다. 아래 예시는 모두 `place-service` 를 만드는 경우입니다.
+
+**먼저 이름이 두 종류라는 것을 알아 둡니다.** 자바 패키지에는 하이픈을 쓸 수 없어 `com.pawtrail.place-service` 가 불가능하므로, 자리에 따라 값이 갈립니다.
+
+| 자리 | 값 | 예시 |
+|---|---|---|
+| 저장소명 | 전체 이름 | `place-service` |
+| 이미지명 (`Jenkinsfile` 의 `serviceName`) | 전체 이름 | `place-service` |
+| `spring.application.name` | 전체 이름 | `place-service` |
+| `config` 저장소의 파일명 | 전체 이름 | `place-service.yml` |
+| 유레카 등록 이름 | 전체 이름 | `place-service` |
+| `settings.gradle` 의 `rootProject.name` | 전체 이름 | `place-service` |
+| 자바 패키지 | **접미사를 뗀 이름** | `com.pawtrail.place` |
+| 앱 클래스 | **접미사를 뗀 이름** | `PlaceApplication` |
+
+아래 여섯 줄은 전부 **저장소 바깥과 맺는 계약**이라 한 글자라도 어긋나면 다른 시스템이 이 서비스를 찾지 못합니다. 이미지 태그, 설정 파일 조회, 유레카 등록과 게이트웨이의 `lb://`, Loki 라벨과 Zipkin 서비스 이름이 모두 이 문자열에 걸려 있습니다.
+
+반대로 자바 패키지는 **이 저장소 안에서만 쓰이므로** 배포에 관여하지 않습니다. 규칙은 이렇습니다.
+
+> 패키지와 클래스명은 저장소명에서 `-service` 접미사를 떼고 하이픈을 지운 것입니다.
+
+`-server` 는 떼지 않습니다. `gateway-server` 는 그 물건의 이름 자체이므로 `com.pawtrail.gatewayserver` 가 되고, `-service` 는 "도메인 서비스"라는 분류 꼬리표라 패키지 안에서는 의미가 없습니다.
 
 #### settings.gradle
 
-프로젝트 이름을 바꿉니다. 이 값이 빌드 산출물 jar 이름이 되므로 Dockerfile과도 연결됩니다.
+프로젝트 이름을 바꿉니다. 이 값이 빌드 산출물 jar 이름이 되므로 Dockerfile과도 연결됩니다. **저장소명을 그대로 씁니다.**
 
 ```groovy
 // 바꾸기 전
 rootProject.name = 'template'
 
 // 바꾸기 후
-rootProject.name = 'place'
+rootProject.name = 'place-service'
 ```
 
 #### gradle.properties
@@ -373,7 +394,7 @@ COPY build/libs/*.jar app.jar
 # 바꾸기 전
 COPY build/libs/template-0.0.1-SNAPSHOT.jar app.jar
 # 바꾸기 후
-COPY build/libs/place-0.0.1-SNAPSHOT.jar app.jar
+COPY build/libs/place-service-0.0.1-SNAPSHOT.jar app.jar
 ```
 
 **와일드카드가 안전한 것은 `build/libs` 에 jar가 하나만 생기기 때문입니다.** `build.gradle` 맨 아래에서 `jar` 태스크를 꺼 두었습니다.
@@ -408,6 +429,8 @@ docker run --rm --entrypoint sh <이미지> -c "ls -lh /app"
 
 파이프라인 본체는 공유 라이브러리에 있으므로 파라미터 3개만 채웁니다. `deployNode`는 이 서비스가 올라갈 노드이고, `instances`는 띄울 개수입니다. 어느 노드에 몇 개인지는 9장의 분류표와 인프라 문서를 따릅니다.
 
+**`serviceName` 은 저장소명을 그대로 씁니다.** 이 값이 그대로 이미지 태그가 되기 때문입니다. 짧게 적으면 Jenkins 는 `ghcr.io/paw-trail/place` 로 올리는데 배포는 `ghcr.io/paw-trail/place-service` 를 내려받으려 하므로 `manifest unknown` 으로 실패합니다. **배포 시점에야 드러나고 메시지가 이름 문제라는 것을 알려주지 않습니다.**
+
 ```groovy
 // 바꾸기 전
 @Library('pawtrail-pipeline') _
@@ -420,7 +443,7 @@ springServicePipeline(
 // 바꾸기 후
 @Library('pawtrail-pipeline') _
 springServicePipeline(
-    serviceName: 'place',
+    serviceName: 'place-service',
     deployNode : 'core',
     instances  : 1
 )
