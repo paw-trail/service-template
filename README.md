@@ -240,7 +240,7 @@ rootProject.name = 'place-service'
 공통 모듈 버전을 최신으로 맞춥니다. **템플릿에 적힌 값이 최신이 아닐 수 있으므로** 조직 Packages 페이지에서 확인한 뒤 다르면 고칩니다.
 
 ```properties
-commonVersion=0.0.7
+commonVersion=0.0.8
 ```
 
 이 값만 바꾸고 다시 빌드하면 새 버전이 내려옵니다. 올리는 절차와 주의할 점은 3-3에 있습니다.
@@ -1171,7 +1171,7 @@ GitHub Packages는 공개 저장소라도 내려받을 때 인증을 요구합�
 
 ```properties
 # gradle.properties
-commonVersion=0.0.4
+commonVersion=0.0.8
 
 # 라이브러리 버전도 같은 곳에서 관리합니다
 querydslVersion=7.6
@@ -1327,7 +1327,7 @@ cp .env.example .env
 
 | 키 | 두는 곳 | 값 | 무엇을 하는가 |
 |---|---|---|---|
-| `commonVersion` | 레포 안 `gradle.properties` | 예: `0.0.4` | 공통 모듈 버전 |
+| `commonVersion` | 레포 안 `gradle.properties` | 예: `0.0.8` | 공통 모듈 버전 |
 | `GPR_USER` / `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
 | `CONFIG_HOST` | 환경변수 | 기본값 `localhost` | 설정 서버 주소. 컨테이너와 AWS 에서만 지정합니다 |
 | `DB_HOST` | 환경변수 (`.env`) | 개발용 PostgreSQL 주소 | config 저장소의 `app.datasource.host` 가 이 값을 참조합니다 |
