@@ -677,6 +677,8 @@ Select-String -Path build.gradle -Pattern "jpa|flyway|querydsl|datasource"
 .\gradlew.bat compileJava
 ```
 
+여기서 `compileJava` 만 하는 것은 컴파일만 확인하면 되기 때문입니다. `build` 를 돌리면 테스트가 함께 도는데, 그때 **PostgreSQL 컨테이너가 하나 떴다가 사라집니다.** 놀라지 않아도 되며 자세한 내용은 2-7에 있습니다.
+
 **`BUILD SUCCESSFUL` 만 보고 넘어가지 않습니다.** 그 아래 `actionable tasks: N executed` 줄을 함께 확인합니다. 소스가 컴파일 대상에 잡히지 않으면 Gradle은 아무 일도 하지 않고 성공으로 끝나기 때문입니다. 패키지 경로 치환이 잘못되었을 때 이 형태로 나타납니다.
 
 #### 터미널에서 실행할 때 JAVA_HOME 주의
@@ -933,6 +935,92 @@ SERVICE_DB_PASSWORD=<전달받은 비밀번호>
 - 이미 적용된 스크립트 파일은 고치지 않습니다. 내용이 바뀌면 체크섬이 달라져 다음 기동이 실패합니다. 고쳐야 한다면 새 번호로 스크립트를 하나 더 만듭니다
 - 서비스별 스크립트는 `V20`부터 시작합니다. `V1`부터 `V19`는 공통 모듈이 사용합니다
 
+### 2-7. 빌드할 때 뜨는 데이터베이스
+
+`./gradlew build` 를 돌리면 **PostgreSQL 컨테이너가 하나 떴다가 사라집니다.** 테스트가 직접 띄우는 것이며, 위에서 설명한 공용 DB나 `db` 프로파일과는 아무 관계가 없습니다.
+
+| | 개발할 때 | 빌드할 때 |
+|---|---|---|
+| 무엇이 쓰나 | 개발 도구에서 띄운 서비스 | `contextLoads()` |
+| 데이터베이스 | 공용 PostgreSQL | 테스트가 띄운 컨테이너 |
+| 누가 준비하나 | 사람이 미리 세워 둠 | 테스트가 알아서 |
+| 데이터 | 남습니다 | 매번 사라집니다 |
+| 사는 동안 | 개발하는 내내 | 몇 초 |
+
+#### 왜 이렇게 하는가
+
+`contextLoads()` 는 애플리케이션을 통째로 한 번 띄워 **빈 배선이 깨지지 않았는지** 확인하는 검사입니다. 그런데 애플리케이션이 뜨려면 `DataSource` 가 필요하고, 그 주소는 설정 서버에서 내려옵니다.
+
+`spring.config.import` 에 `optional:` 이 붙어 있어 **설정 서버가 없어도 조용히 넘어간 뒤 `DataSource` 를 만들다 실패합니다.** 그대로 두면 이 검사가 설정 서버 기동 여부에 따라 되다 말다 하므로 검사로서 의미가 없고, 설정 서버가 없는 CI에서는 항상 실패합니다.
+
+그래서 테스트가 외부에 기대지 않도록 데이터베이스를 스스로 준비합니다. Docker가 떠 있어야 하지만, 평소 개발에 컨테이너를 띄워 두므로 추가 조건은 아닙니다.
+
+#### 무엇이 검증되는가
+
+메모리 데이터베이스가 아니라 실제 PostgreSQL을 쓰는 이유입니다.
+
+- **Flyway 스크립트가 실제로 실행됩니다.** `V1`, `V2`, 그리고 이 서비스의 `V20` 까지 돌아갑니다
+- **엔티티와 스키마가 대조됩니다.** `ddl-auto` 가 `validate` 이므로 컬럼 이름이나 타입이 어긋나면 빌드가 실패합니다
+- 공통 모듈의 자동 설정 6개가 실제로 켜지는지도 함께 드러납니다
+
+#### 좌표 타입을 쓰는 서비스는 이미지를 바꿉니다
+
+기본값은 `postgres:17-alpine` 입니다. arm64를 지원해 Apple Silicon에서 에뮬레이션 없이 돕니다.
+
+**search, route, place 는 PostGIS가 필요하므로** `TemplateApplicationTests` 의 이미지 이름을 `postgis/postgis:17-3.5` 로 바꿉니다. 그 이미지는 amd64 전용이라 Apple Silicon에서는 Docker Desktop의 Rosetta를 켜야 합니다.
+
+#### 테스트 설정 파일은 main 쪽을 가립니다
+
+`src/test/resources/application.yml` 은 `src/main/resources/application.yml` 을 **덮어쓰는 것이 아니라 통째로 가립니다.** 클래스패스에서 `application.yml` 을 하나만 찾는데 테스트 리소스가 앞서기 때문입니다.
+
+그래서 main 쪽에 있던 값도 필요하면 다시 적어야 합니다. 지금 옮겨 적은 것은 둘입니다.
+
+| 값 | 빠뜨리면 |
+|---|---|
+| `spring.application.name` | 로그의 서비스 이름과 유레카 등록 이름이 `unknown` 이 됩니다 |
+| `spring.profiles.default` | 프로파일이 `local` 이 아니게 되어 **Loki 로 로그를 보내려다 실패하고, 테스트 출력이 연결 오류 스택트레이스로 뒤덮입니다** |
+
+나머지 넷(`spring.cloud.config.enabled`, `eureka.client.enabled`, `spring.flyway.locations`, `spring.jpa.hibernate.ddl-auto`)은 config 저장소 1계층의 사본입니다. **설정 서버를 껐으므로 1계층 값이 하나도 내려오지 않기 때문**이며, config 저장소에서 그 값을 바꾸면 이 파일도 함께 봅니다.
+
+#### 라이브러리 사용 시 주의 3가지
+
+Testcontainers 2.x 는 1.x와 여러 곳이 다릅니다. **인터넷 예제 대부분이 1.x 기준이므로 그대로 가져오면 걸립니다.**
+
+**하나 — 아티팩트 이름에 접두사가 붙습니다.** 2.0부터의 규칙이며, 접두사 없는 옛 이름은 1.x 버전까지만 존재합니다.
+
+```groovy
+// 1.x
+'org.testcontainers:postgresql'
+// 2.x
+'org.testcontainers:testcontainers-postgresql'
+```
+
+**둘 — 버전을 직접 적어야 합니다.** Spring Boot가 버전을 관리하는 것은 `spring-boot-testcontainers` 하나뿐이고, `testcontainers-bom` 에는 접두사가 붙은 이름들이 빠져 있어 가져와도 해결되지 않습니다. `gradle.properties` 의 `testcontainersVersion` 으로 지정하며, **전이로 들어오는 코어와 같은 값이어야 합니다.**
+
+```powershell
+./gradlew dependencies --configuration testCompileClasspath | Select-String "testcontainers"
+```
+
+**셋 — 컨테이너 클래스의 패키지가 바뀌었습니다.** 2.x 는 제네릭이 없는 `org.testcontainers.postgresql.PostgreSQLContainer` 입니다. 제네릭이 붙은 옛 클래스는 하위 호환용으로 남아 있고 사용이 권장되지 않습니다.
+
+```java
+// 옛 클래스 — 컴파일은 통과하지만 경고가 남습니다
+import org.testcontainers.containers.PostgreSQLContainer;
+static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+
+// 현재 클래스
+import org.testcontainers.postgresql.PostgreSQLContainer;
+static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+```
+
+**클래스 이름 뒤에 `<?>` 가 붙어 있으면 옛 클래스를 쓰고 있다는 뜻입니다.**
+
+이 경고는 Gradle 빌드 캐시에 가려집니다. 소스가 바뀌지 않으면 컴파일을 다시 하지 않아 경고도 찍히지 않으므로, 고친 뒤 확인할 때는 강제로 다시 컴파일합니다.
+
+```powershell
+./gradlew clean build --rerun-tasks
+```
+
 ---
 
 ## 3. 공통 모듈 가져오기와 버전 올리기
@@ -952,7 +1040,7 @@ GitHub Packages는 공개 저장소라도 내려받을 때 인증을 요구합�
 
 토큰은 절대 `build.gradle` 이나 레포 안 파일에 직접 적지 않습니다. 커밋에 함께 올라갑니다.
 
-**공통 모듈이 아직 배포되지 않았다면** `build.gradle` 의 공통 모듈 의존성 줄이 주석 처리된 상태입니다. 이 경우 환경변수가 없어도 빌드가 통과합니다. 공통 모듈이 배포된 뒤에 주석을 풀고 `gradle.properties` 의 `commonVersion` 을 맞춥니다.
+**환경변수가 없으면 빌드가 실패합니다.** 공통 모듈 의존성이 이미 선언되어 있어 내려받기를 시도하기 때문이며, 인증에 실패하면 `Received status code 401` 로 나타납니다. 원인이 토큰이라는 것이 메시지에 드러나지 않으므로 이 절을 먼저 확인합니다.
 
 ### 3-2. build.gradle에서 고치는 부분
 
