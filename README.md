@@ -18,7 +18,7 @@
 | 로컬에서 서비스를 띄워보려 한다 | **2장**. 무엇을 Docker 로 띄우고 무엇을 IntelliJ 에서 실행하는지 나옵니다 |
 | 공통 모듈이 무엇인지 모르겠다 | **6장**. 무엇이 들어 있고 어떻게 쓰는지 코드 예시와 함께 있습니다 |
 | 코드를 어느 폴더에 둘지 모르겠다 | **5장**(왜 이렇게 나누는가) → **7장**(폴더마다 무엇을 두는가) |
-| 기동이 안 되거나 IntelliJ 가 빨간 줄을 긋는다 | **1-7**, **1-8**, **10장** |
+| 기동이 안 되거나 IntelliJ 가 빨간 줄을 긋는다 | **1-7**, **1-8**, **1-9**, **10장** |
 | DB 를 쓰지 않는 서비스를 맡았다 | **1-4** → **8장** |
 
 **처음 읽는다면 1장 → 5장 → 6장 → 7장 순서를 권합니다.** 1장으로 환경을 만들고, 5장으로 왜 이렇게 나눴는지 이해한 뒤, 6장에서 공통으로 제공되는 것을 익히고, 7장에서 실제 파일을 어디에 만들지 확인하는 흐름입니다.
@@ -29,7 +29,7 @@
 
 **② 인증은 게이트웨이가 끝냅니다.** 각 서비스는 JWT 를 직접 다루지 않습니다. 게이트웨이가 토큰을 검증한 뒤 `X-User-Id`·`X-User-Role` 헤더로 넣어주고, 공통 모듈의 필터가 그것을 읽어 `SecurityContext` 를 채웁니다. **게이트웨이는 헤더를 넣기 전에 바깥에서 들어온 같은 이름의 헤더를 먼저 지웁니다.** 그래야 이 헤더를 그대로 믿는 것이 성립합니다.
 
-**③ 이벤트는 카프카로 바로 보내지 않습니다.** 자기 DB 의 `outbox` 테이블에 먼저 저장하고, 커밋된 뒤에 별도 스레드가 발행합니다. "데이터는 저장됐는데 이벤트는 안 나갔다"를 막기 위한 구조이며, 공통 모듈이 전부 처리하므로 사용하는 쪽은 한 줄만 부르면 됩니다.
+**③ 이벤트는 카프카로 바로 보내지 않습니다.** 자기 DB 의 `outbox` 테이블에 먼저 저장하고, 커밋된 뒤에 별도 스레드가 발행합니다. "데이터는 저장됐는데 이벤트는 안 나갔다"를 막기 위한 구조이며, 발행하는 쪽은 공통 모듈의 메서드 한 줄만 부르면 됩니다. **다만 발행이 끝내 실패한 건을 사람이 다시 내보내는 관리자 API 는 각 서비스가 직접 만들어야 합니다**(7장).
 
 ---
 
@@ -240,7 +240,7 @@ rootProject.name = 'place-service'
 공통 모듈 버전을 최신으로 맞춥니다. **템플릿에 적힌 값이 최신이 아닐 수 있으므로** 조직 Packages 페이지에서 확인한 뒤 다르면 고칩니다.
 
 ```properties
-commonVersion=0.0.8
+commonVersion=0.0.9
 ```
 
 이 값만 바꾸고 다시 빌드하면 새 버전이 내려옵니다. 올리는 절차와 주의할 점은 3-3에 있습니다.
@@ -907,7 +907,7 @@ Settings → Editor → File Encodings
 
 첫 번째 상태에서 파일을 저장하면 두 번째로 넘어갑니다. 한글이 ISO-8859-1 에 없어 물음표로 대체되기 때문입니다.
 
-### 1-8. IntelliJ 에 표시되는 경고 두 가지는 정상입니다
+### 1-9. IntelliJ 에 표시되는 경고 두 가지는 정상입니다
 
 세팅을 마쳐도 IntelliJ 가 아래 두 가지를 빨간 줄로 표시합니다. 컴파일과 기동에는 영향이 없습니다.
 
@@ -1171,7 +1171,7 @@ GitHub Packages는 공개 저장소라도 내려받을 때 인증을 요구합�
 
 ```properties
 # gradle.properties
-commonVersion=0.0.8
+commonVersion=0.0.9
 
 # 라이브러리 버전도 같은 곳에서 관리합니다
 querydslVersion=7.6
@@ -1201,9 +1201,33 @@ dependencies {
 
 ### 3-3. 공통 모듈 버전을 올리는 절차
 
-1. 공통 모듈 레포에서 `version`을 올리고 GitHub Packages에 배포합니다
-2. 이 서비스 레포의 `gradle.properties`에서 `commonVersion` 값을 새 버전으로 고칩니다
-3. Gradle을 새로 고칩니다
+배포하는 담당자와 받아 쓰는 사람이 하는 일이 다릅니다.
+
+**받아 쓰는 쪽**은 `gradle.properties` 의 `commonVersion` 을 새 버전으로 고치고 Gradle 을 새로 고치면 끝입니다.
+
+**배포하는 쪽**은 아래 순서를 따릅니다.
+
+1. 공통 모듈 레포에서 `version` 을 올리고 코드를 고칩니다
+2. `./gradlew publishToMavenLocal` 로 **로컬 저장소에 먼저 넣습니다**
+3. 받아 쓰는 레포의 `build.gradle` 에서 `repositories` **맨 앞**에 `mavenLocal()` 을 임시로 넣고, `commonVersion` 을 새 버전으로 고쳐 빌드가 통과하는지 확인합니다
+4. 확인되면 `./gradlew publish` 로 GitHub Packages 에 올립니다
+5. **publish 가 끝난 뒤에** 임시로 넣었던 `mavenLocal()` 을 지우고 다시 빌드합니다
+
+**2~3단계를 건너뛰지 않습니다.** GitHub Packages 는 같은 버전을 덮어쓸 수 없어 `publish` 한 번이 버전 하나를 영구히 소모합니다. 로컬 저장소는 몇 번이든 다시 넣을 수 있으므로, 잘못된 것을 올려 버전을 버리는 대신 먼저 거기서 확인합니다.
+
+**5단계의 순서를 지킵니다.** `mavenLocal()` 을 먼저 지우면 아직 Packages 에 없는 버전을 찾지 못해 `Could not find com.pawtrail:common:x.y.z` 로 빌드가 깨집니다.
+
+`mavenLocal()` 은 **받아 쓰는 쪽**에 넣습니다. 공통 모듈 레포에 넣으면 자기가 자기를 내려받지 않으므로 아무 효과가 없습니다.
+
+`publish` 는 쓰기 권한이 필요하므로 `GPR_TOKEN` 에 `write:packages` 가 있어야 합니다. **환경변수는 터미널 세션마다 사라지므로** 새 창에서 배포하면 `401 Unauthorized` 가 납니다. 파일에서 읽어 넣을 때는 끝의 개행이 값에 섞이지 않도록 잘라냅니다.
+
+```powershell
+$env:GPR_USER  = "<GitHub 사용자명>"
+$env:GPR_TOKEN = (Get-Content <토큰 파일 경로>).Trim()
+./gradlew publish
+```
+
+버전을 올린 뒤에는 **이 문서의 `commonVersion` 표기 세 곳**(1-3 · 3-2 · 4-4 표)과 **이미 만들어진 서비스 레포들의 `gradle.properties`** 도 함께 고칩니다. 템플릿은 복사한 뒤 연결이 끊기므로 자동으로 따라가지 않습니다.
 
 공통 모듈은 릴리스 버전으로 고정해 사용합니다. 즉 버전을 올리지 않으면 계속 예전 버전으로 빌드됩니다. 컴파일은 정상적으로 되기 때문에 알아채기 어려우므로, **공통 모듈이 변경되었다는 공지를 받으면 이 값부터 확인합니다.**
 
@@ -1327,7 +1351,7 @@ cp .env.example .env
 
 | 키 | 두는 곳 | 값 | 무엇을 하는가 |
 |---|---|---|---|
-| `commonVersion` | 레포 안 `gradle.properties` | 예: `0.0.8` | 공통 모듈 버전 |
+| `commonVersion` | 레포 안 `gradle.properties` | 예: `0.0.9` | 공통 모듈 버전 |
 | `GPR_USER` / `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
 | `CONFIG_HOST` | 환경변수 | 기본값 `localhost` | 설정 서버 주소. 컨테이너와 AWS 에서만 지정합니다 |
 | `DB_HOST` | 환경변수 (`.env`) | 개발용 PostgreSQL 주소 | config 저장소의 `app.datasource.host` 가 이 값을 참조합니다 |
@@ -1438,7 +1462,7 @@ http://localhost:8888/<서비스명>/local
 | 클래스 | 켜지는 조건 | 등록하는 Bean |
 |---|---|---|
 | `CommonWebAutoConfiguration` | 서블릿 웹 + spring-webmvc | `GlobalExceptionHandler`, `TraceIdResponseAdvice` |
-| `CommonSecurityAutoConfiguration` | 서블릿 웹 + spring-security | `SecurityFilterChain`(관리자 경로 보호 포함), `CustomSecurityExceptionHandler` |
+| `CommonSecurityAutoConfiguration` | 서블릿 웹 + spring-security | `SecurityFilterChain`(관리자 경로 보호 포함), `CustomSecurityExceptionHandler`, `AuthenticationManager` |
 | `CommonJpaAutoConfiguration` | spring-data-jpa | `AuditorProvider`, JPA Auditing 활성화 |
 | `CommonMessagingAutoConfiguration` | spring-data-jpa + spring-kafka | `OutboxEventRecorder`, `OutboxPublisher`, `OutboxCommitListener`, `OutboxRelay`, `InboxProcessor` |
 | `CommonKafkaAutoConfiguration` | spring-kafka | `RecordMessageConverter`, `KafkaSecurityInterceptor`, `DefaultErrorHandler` |
@@ -1491,6 +1515,7 @@ com.pawtrail.common
 │   │                                               VALIDATION_FAILED(400)
 │   │                                               AUTHENTICATION_FAILED(401)
 │   │                                               ACCESS_DENIED(403)
+│   │                                               RESOURCE_NOT_FOUND(404)
 │   │                                               INTERNAL_ERROR(500)
 │   │                                               EXTERNAL_API_ERROR(502)
 │   ├── CustomException.java (class)                의도적으로 던지는 모든 예외입니다. ErrorCode 를 하나
@@ -1501,13 +1526,17 @@ com.pawtrail.common
 │   └── handler/
 │       └── GlobalExceptionHandler.java (class)
 │                                                   모든 예외를 잡아 응답 형식으로 바꾸는 곳입니다.
-│                                                   핸들러는 4개입니다.
+│                                                   핸들러는 5개입니다.
 │                                                   (1) CustomException → ErrorCode 의 상태로 응답
 │                                                   (2) MethodArgumentNotValidException(@Valid 실패)
 │                                                       → 400 과 함께 필드별 오류 배열 반환
 │                                                   (3) MethodArgumentTypeMismatchException
 │                                                       (/places/abc 처럼 타입 불일치) → 400
-│                                                   (4) Exception → 500
+│                                                   (4) NoResourceFoundException
+│                                                       (컨트롤러가 없는 주소) → 404
+│                                                       이것이 없으면 오타 난 URL 하나가 500 으로 나가고
+│                                                       스택트레이스가 쌓여 로그에서 진짜 오류를 못 찾습니다
+│                                                   (5) Exception → 500
 │                                                   401·403 은 여기로 오지 않습니다. 시큐리티 필터가
 │                                                   DispatcherServlet 앞에 있어 아래 핸들러가 처리합니다
 │
