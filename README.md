@@ -3928,7 +3928,7 @@ Kafka 는 arm64 를 지원하는 공식 이미지를 씁니다.
 팀원 컴퓨터                            docker compose pull
                                                 │
                                                 ▼
-                               docker compose --profile app up -d
+                                  docker compose up -d
 ```
 
 > `ghcr.io` 는 **GitHub 이 제공하는 이미지 저장소**입니다. 공통 모듈 jar 와
@@ -3941,7 +3941,7 @@ Kafka 는 arm64 를 지원하는 공식 이미지를 씁니다.
 ```
 ① 개발하는 동안        IntelliJ 로 띄움
 ② 기능이 안정되면      이미지로 구워 push
-③ 팀원은              docker compose --profile app up -d
+③ 팀원은              .env 에 app 을 넣고  docker compose up -d
 ④ 다시 고칠 일이 생기면  IntelliJ 로 돌아감
 ```
 
@@ -4112,6 +4112,10 @@ config-server 가 healthy 가 될 때까지 기다림
 
 > `condition: service_healthy` 여야 합니다. 그냥 `depends_on` 만 쓰면
 > **컨테이너가 뜬 것만 보고 넘어가** 설정 서버가 아직 준비 중일 때 시작합니다.
+>
+> **`depends_on` 이 가리키는 것은 다른 프로파일에 있습니다.** `config-server` 는
+> `platform`, `postgres` 는 `db` 입니다. 그 프로파일들이 함께 켜져 있지 않으면
+> Compose 가 프로젝트를 만들 때 오류를 냅니다. [5-4](#5-4-app-프로파일로-확인하기) 참고.
 
 ---
 
@@ -4131,6 +4135,28 @@ Dockerfile 에 `-XX:MaxRAMPercentage=70` 이 있어 **이 값의 70% 까지 힙�
 
 ### 5-4. app 프로파일로 확인하기
 
+**`.env` 의 `COMPOSE_PROFILES` 에 `app` 을 넣습니다.**
+
+```
+COMPOSE_PROFILES=infra,platform,db,tools,app
+```
+
+> **`--profile app` 만 붙이면 안 됩니다.** 명령의 `--profile` 은 `.env` 값에
+> 더해지는 것이 아니라 **통째로 대체합니다.** 활성 프로파일이 `app` 하나가 되어
+> `depends_on` 이 가리키는 컨테이너가 프로젝트에 없다는 오류가 납니다.
+>
+> ```
+> service "auth-service" depends on undefined service "config-server"
+> ```
+>
+> `.env` 를 고치지 않고 한 번만 띄우려면 **필요한 것을 전부 나열합니다.**
+>
+> ```bash
+> docker compose --profile infra --profile platform --profile db --profile tools --profile app up -d
+> ```
+
+---
+
 **띄웁니다.**
 
 **macOS · Windows 공통**
@@ -4138,7 +4164,7 @@ Dockerfile 에 `-XX:MaxRAMPercentage=70` 이 있어 **이 값의 70% 까지 힙�
 ```bash
 cd <infra 경로>
 git pull
-docker compose --profile app up -d
+docker compose up -d
 docker compose ps
 ```
 
@@ -4194,7 +4220,7 @@ docker compose logs -f place-service
 
 ```bash
 docker compose pull place-service
-docker compose --profile app up -d
+docker compose up -d
 ```
 
 > `up -d` 만으로는 이미지를 다시 받지 않습니다.
