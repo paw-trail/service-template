@@ -2044,7 +2044,9 @@ POST /api/v1/admin/{리소스}/outbox/{id}/retry   한 건 재발행
 
 멈춘 건은 같은 집합체의 뒤 이벤트를 막지 않습니다. 순서를 지키려고 기다리게 하면 그 집합체의 이벤트가 통째로 멈추기 때문입니다. 따라서 재발행하는 시점에는 **더 나중에 만들어진 이벤트가 이미 나가 있을 수 있습니다.**
 
-지금은 문제가 되지 않습니다. 이벤트 5개가 전부 "네가 가진 것이 낡았다"를 알리는 형태이고, 받는 쪽이 그 시점의 현재 상태를 다시 읽어 가기 때문입니다. **다만 순서 자체가 의미를 갖는 이벤트를 나중에 추가한다면 이 전제가 깨집니다.**
+이벤트 6개 중 5개는 문제가 되지 않습니다. "네가 가진 것이 낡았다"를 알리는 형태이고, 받는 쪽이 그 시점의 현재 상태를 다시 읽어 가기 때문입니다. **다만 순서 자체가 의미를 갖는 이벤트를 나중에 추가한다면 이 전제가 깨집니다.**
+
+`account.created` 가 예외입니다. 받는 쪽이 payload 로 데이터를 새로 만들며 발행자를 다시 읽지 않습니다. auth 는 `/internal` API 가 없어 다시 읽을 곳 자체가 없습니다. 같은 계정의 `account.withdrawn` 이 먼저 나간 뒤에 재발행되면 이미 탈퇴한 계정의 데이터가 생깁니다. **받는 쪽에서 막아야 하며 그 방식은 아직 정해지지 않았습니다.**
 
 ---
 
@@ -2148,17 +2150,17 @@ InboxProcessor는 처리 이력을 DB에 남겨야 하는데 이 서비스들에
 
 ### 이벤트 발행·수신 현황
 
-이벤트는 **5개뿐입니다.** 이 표가 토픽 이름의 단일 참조이므로, 발행하는 쪽과 받는 쪽이 같은 문자열을 쓰는지 여기서 확인합니다.
+이벤트는 **6개뿐입니다.** 이 표가 토픽 이름의 단일 참조이므로, 발행하는 쪽과 받는 쪽이 같은 문자열을 쓰는지 여기서 확인합니다.
 
 | 서비스 | outbox (발행) | inbox (수신) |
 |---|---|---|
-| auth | account.withdrawn | — |
+| auth | account.created, account.withdrawn | — |
 | place | place.updated | — |
 | policy | policy.changed | — |
 | pet | pet.profile.updated | account.withdrawn |
 | report | report.reviewed | account.withdrawn |
 | review | — | account.withdrawn |
-| user | — | account.withdrawn |
+| user | — | account.created, account.withdrawn |
 | search | — | place.updated |
 | notification | — | policy.changed, report.reviewed, account.withdrawn |
 | verdict | — | policy.changed, pet.profile.updated (inbox 미사용) |
@@ -2166,6 +2168,7 @@ InboxProcessor는 처리 이력을 DB에 남겨야 하는데 이 서비스들에
 
 | 이벤트 | 무엇을 알리는가 | payload |
 |---|---|---|
+| `account.created` | 계정이 생겼으니 프로필을 만들어야 합니다 | `{accountId, email, nickname}` |
 | `place.updated` | 장소 정보가 바뀌어 색인이 낡았습니다 | `{placeId}` |
 | `policy.changed` | 동반 조건이 바뀌어 알림 대상과 판정 캐시가 낡았습니다 | `{placeId, policyVersion, changedFields[], hasConflict}` |
 | `pet.profile.updated` | 반려동물 정보가 바뀌어 판정 캐시가 낡았습니다 | `{petId, accountId, verdictRelevantChanged}` |
