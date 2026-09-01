@@ -1,13 +1,13 @@
 # 테스트 전용 설정임
 #
-# ★이 파일은 src/main/resources/application.yml 을 덮어쓰는 것이 아니라 통째로 가림
+# *이 파일은 src/main/resources/application.yml 을 덮어쓰는 것이 아니라 통째로 가림
 #   클래스패스에서 application.yml 을 하나만 찾는데
 #   Gradle 테스트에서는 build/resources/test 가 앞서기 때문임
 #   따라서 main 쪽에 있던 값도 여기 필요하면 다시 적어야 함
 #   main 에 있는 세 줄 중 spring.application.name 과 spring.profiles.default 를 다시 적었고
 #   spring.config.import 는 아래에서 설정 서버를 끄므로 적지 않음
 #
-# ★아래 값 중 넷은 config 저장소 1계층(application.yml)의 사본임
+# *아래 값 중 넷은 config 저장소 1계층(application.yml)의 사본임
 #   테스트에서는 설정 서버를 끄므로 1계층 값이 하나도 내려오지 않기 때문임
 #   config 저장소에서 그 값을 바꾸면 여기도 함께 봐야 함
 
