@@ -8,12 +8,6 @@
 
 ---
 
-**저장소가 이렇게 나뉘어 있습니다.**
-
-
-
----
-
 **먼저 전체 그림을 보고, 이 레포가 그 안 어디에 있는지 본 뒤 읽습니다.**
 
 **① 전체 구조 — 층으로 본 것.** 위에서 아래로 요청이 내려가고, 어느 층에 무엇이 있는지.
@@ -3374,8 +3368,12 @@ gateway    8080 · 8180
 
 ```bash
 docker compose --profile db up -d
-docker compose exec postgres psql -U postgres -c "\l"
+docker compose exec postgres psql -U pawtrail -c "\l"
 ```
+
+> **`-U pawtrail` 은 슈퍼유저 계정입니다.** `infra` 저장소 `.env` 의 `POSTGRES_USER`
+> 값이며 이름을 바꿨다면 그 값을 씁니다. 서비스 계정(`place_svc` 등)으로는
+> 자기 데이터베이스 하나만 보입니다.
 
 > 자세한 내용은 `infra` 저장소 README 에 있습니다.
 
@@ -3567,7 +3565,7 @@ static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpin
 src/main/resources/db/migration/
 ├── common/                     공통 모듈이 넣어 둔 것
 │   ├── V1__outbox.sql
-│   └── V2__processed_event.sql
+│   └── V2__inbox.sql
 └── service/                    이 서비스가 만드는 것
     └── V20__place.sql
 ```
@@ -3673,8 +3671,8 @@ Flyway 는 실행한 스크립트의 체크섬을 `flyway_schema_history` 에 �
 **macOS · Windows 공통**
 
 ```bash
-docker compose exec postgres psql -U postgres -c "DROP DATABASE place_db;"
-docker compose exec postgres psql -U postgres -c "CREATE DATABASE place_db OWNER place_svc;"
+docker compose exec postgres psql -U pawtrail -c "DROP DATABASE place_db;"
+docker compose exec postgres psql -U pawtrail -c "CREATE DATABASE place_db OWNER place_svc;"
 ```
 
 > **이미 커밋해서 남이 실행했다면 되돌리지 않습니다.**
@@ -3832,8 +3830,8 @@ docker compose exec postgres psql -U auth_svc -d auth_db -P pager=off \
 처음부터 다시 하려면 데이터베이스를 통째로 지우는 편이 확실합니다.
 
 ```bash
-docker compose exec postgres psql -U postgres -c "DROP DATABASE auth_db;"
-docker compose exec postgres psql -U postgres -c "CREATE DATABASE auth_db OWNER auth_svc;"
+docker compose exec postgres psql -U pawtrail -c "DROP DATABASE auth_db;"
+docker compose exec postgres psql -U pawtrail -c "CREATE DATABASE auth_db OWNER auth_svc;"
 ```
 
 지운 뒤 서비스를 다시 띄우면 Flyway 가 스키마를 다시 만듭니다.
