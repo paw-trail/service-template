@@ -3927,7 +3927,7 @@ Kafka 는 arm64 를 지원하는 공식 이미지를 씁니다.
 
 ```
 코드를 고칠 때마다
-  ./gradlew build  →  docker build  →  docker push
+  ./gradlew build  →  docker buildx build --push
 
 안 하면 상대가 낡은 이미지를 계속 씀
 ```
@@ -3941,7 +3941,7 @@ Kafka 는 arm64 를 지원하는 공식 이미지를 씁니다.
 
 ```
 내 컴퓨터
-  ./gradlew build  ──▶  docker build  ──▶  docker push
+  ./gradlew build  ──▶  docker buildx build --push
                                                 │
                                                 ▼
                            [ ghcr.io/paw-trail/place-service:latest ]
@@ -4026,8 +4026,8 @@ $env:GPR_TOKEN | docker login ghcr.io -u <GitHub 사용자명> --password-stdin
 **macOS · Windows 공통**
 
 ```bash
-docker build -t ghcr.io/paw-trail/place-service:latest .
-docker push ghcr.io/paw-trail/place-service:latest
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/paw-trail/place-service:latest --push .
 ```
 
 > **이름이 저장소명과 같아야 합니다.** `Jenkinsfile` 의 `serviceName` 과도
@@ -4035,16 +4035,58 @@ docker push ghcr.io/paw-trail/place-service:latest
 
 ---
 
-**Apple Silicon 에서 만들면 arm64 이미지가 됩니다.**
+**두 아키텍처를 함께 굽습니다.**
 
-배포 서버는 amd64 라 **그대로 올리면 서버에서 못 돕니다.**
+배포 서버는 amd64 이고 팀원 중에 Apple Silicon 맥이 있습니다. 한쪽만 담으면
+**다른 쪽에서는 컨테이너가 아예 뜨지 않습니다.**
 
-```bash
-docker build --platform linux/amd64 -t ghcr.io/paw-trail/place-service:latest .
+```
+no matching manifest for linux/arm64/v8 in the manifest list entries
 ```
 
-> 지금은 로컬끼리만 주고받으므로 급하지 않습니다.
-> **배포할 때는 반드시 이 옵션을 붙입니다.**
+| 걸리는 것 | 왜 |
+|---|---|
+| `--push` 를 빼면 아무것도 안 남음 | 여러 아키텍처를 담은 이미지는 **로컬 저장소에 넣을 수 없습니다.** `--load` 는 한 아키텍처만 가능하고, 둘 다 빼면 굽기만 하고 버립니다 |
+| `multiple platforms feature is currently not supported` | 빌더를 한 번 만들어야 합니다 |
+
+```bash
+docker buildx create --name multiarch --driver docker-container --use --bootstrap
+```
+
+> **부담은 거의 없습니다.** `Dockerfile` 에 `RUN` 이 하나도 없고 jar 를 복사하는 것뿐이라
+> 다른 아키텍처를 흉내내어 명령을 실행할 일이 없습니다. 두 레이어가 각각 1초 안에 끝납니다.
+
+---
+
+**올린 뒤 아키텍처를 확인합니다.**
+
+```bash
+docker buildx imagetools inspect ghcr.io/paw-trail/place-service:latest
+```
+
+```
+MediaType: application/vnd.oci.image.index.v1+json
+
+  Platform:    linux/amd64
+  Platform:    linux/arm64
+  Platform:    unknown/unknown      ← 빌드 증명, 정상입니다
+  Platform:    unknown/unknown
+```
+
+> **`MediaType` 이 `image.index` 여야 합니다.** `image.manifest` 하나만 나오면
+> 아키텍처가 하나뿐인 이미지입니다.
+
+---
+
+**팀원은 내려받아 다시 띄웁니다.**
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+> **`pull` 을 먼저 합니다.** 이전에 내려받지 못한 이미지가 있으면 실패한 상태가
+> 남아 있을 수 있고, `up -d` 만으로는 이미 가진 이미지를 그대로 씁니다.
 
 ---
 
@@ -7733,7 +7775,7 @@ spring.cloud.gateway.*  →  spring.cloud.gateway.server.webflux.*
 | 용어 | 뜻 |
 |---|---|
 | **컨테이너** | 프로그램과 그 실행 환경을 통째로 묶어 격리해 돌리는 것. Docker 가 만듭니다 |
-| **이미지** | 컨테이너를 만드는 틀. `docker build` 로 만들고 `docker push` 로 올립니다 |
+| **이미지** | 컨테이너를 만드는 틀. `docker buildx build --push` 로 만들어 올립니다 |
 | **Docker Compose** | 컨테이너 여러 개를 파일 하나로 정의하고 한 번에 띄우는 도구. `infra` 저장소의 `docker-compose.yml` 입니다 |
 | **Compose 프로파일** | compose 파일 안에서 "이 묶음만 띄워라" 를 고르는 것. `infra` · `platform` · `db` 등. 스프링 프로파일과는 다른 것입니다 |
 | **환경변수** | 프로그램 밖에서 넣어 주는 값. `DB_HOST=localhost` 처럼 이름과 값입니다. 비밀번호처럼 코드에 적으면 안 되는 값을 이렇게 넘깁니다 |
