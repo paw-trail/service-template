@@ -2915,6 +2915,9 @@ config-server 가 없어 **데이터베이스 주소와 포트를 받지 못합�
 ```bash
 cd ~/Tour_Prj/infra
 
+# 이미지를 최신으로 맞추고
+docker compose pull
+
 # .env 에 평소 조합이 지정되어 있어 옵션 없이 뜸
 docker compose up -d
 
@@ -2930,10 +2933,18 @@ docker compose down
 ```powershell
 cd C:\Tour_Prj\infra
 
+docker compose pull
 docker compose up -d
 docker compose --profile observability up -d
 docker compose down
 ```
+
+> **`pull` 을 먼저 합니다.** `up -d` 는 **이미지가 없을 때만** 내려받고, 이미 갖고
+> 있으면 낡았더라도 그대로 씁니다. 플랫폼과 도메인 서비스 이미지는 다른 사람이
+> 고쳐 다시 올리므로 **내 컴퓨터의 사본이 조용히 뒤처집니다.**
+>
+> 증상이 드러나지 않는 것이 문제입니다. 옛 이미지도 정상적으로 뜨기 때문에
+> **어제 고쳐졌다는 버그가 그대로 재현되거나, 새 API 가 404 로 나옵니다.**
 
 ---
 
@@ -2987,7 +2998,8 @@ docker compose --profile observability down
 **전체 순서입니다.**
 
 ```
-① docker compose up -d              컨테이너를 띄움 (처음엔 1분 남짓)
+① docker compose pull               이미지를 최신으로 맞춤
+  docker compose up -d              컨테이너를 띄움 (처음엔 1분 남짓)
         │
         ▼
 ② docker compose ps                 전부 healthy 인지 봄
@@ -3017,9 +3029,14 @@ docker compose --profile observability down
 
 ```bash
 cd <infra 경로>
+docker compose pull
 docker compose up -d
 docker compose ps
 ```
+
+> **`pull` 을 먼저 합니다.** `up -d` 는 이미지가 없을 때만 내려받고, 이미 갖고
+> 있으면 낡았더라도 그대로 씁니다. 플랫폼과 도메인 서비스 이미지는 다른 사람이
+> 고쳐 다시 올리므로 **내 컴퓨터의 사본이 조용히 뒤처집니다.**
 
 **② 이렇게 보이면 정상입니다.**
 
@@ -3945,7 +3962,7 @@ IntelliJ 도 하나당 1GB 안팎을 씁니다. **여러 서비스를 동시에 
 
 ```
 코드를 고칠 때마다
-  ./gradlew build  →  docker buildx build --push
+  ./gradlew build  →  docker buildx build --platform linux/amd64,linux/arm64 --push
 
 안 하면 상대가 낡은 이미지를 계속 씀
 ```
@@ -3959,7 +3976,7 @@ IntelliJ 도 하나당 1GB 안팎을 씁니다. **여러 서비스를 동시에 
 
 ```
 내 컴퓨터
-  ./gradlew build  ──▶  docker buildx build --push
+  ./gradlew build  ──▶  docker buildx build --platform linux/amd64,linux/arm64 --push
                                                 │
                                                 ▼
                            [ ghcr.io/paw-trail/place-service:latest ]
@@ -7812,7 +7829,7 @@ spring.cloud.gateway.*  →  spring.cloud.gateway.server.webflux.*
 | 용어 | 뜻 |
 |---|---|
 | **컨테이너** | 프로그램과 그 실행 환경을 통째로 묶어 격리해 돌리는 것. Docker 가 만듭니다 |
-| **이미지** | 컨테이너를 만드는 틀. `docker buildx build --push` 로 만들어 올립니다 |
+| **이미지** | 컨테이너를 만드는 틀. `docker buildx build --platform linux/amd64,linux/arm64 --push` 로 만들어 올립니다 |
 | **Docker Compose** | 컨테이너 여러 개를 파일 하나로 정의하고 한 번에 띄우는 도구. `infra` 저장소의 `docker-compose.yml` 입니다 |
 | **Compose 프로파일** | compose 파일 안에서 "이 묶음만 띄워라" 를 고르는 것. `infra` · `platform` · `db` 등. 스프링 프로파일과는 다른 것입니다 |
 | **환경변수** | 프로그램 밖에서 넣어 주는 값. `DB_HOST=localhost` 처럼 이름과 값입니다. 비밀번호처럼 코드에 적으면 안 되는 값을 이렇게 넘깁니다 |
