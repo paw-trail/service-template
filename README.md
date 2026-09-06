@@ -720,7 +720,7 @@ rootProject.name = 'place-service'
 공통 모듈 버전을 최신으로 맞춥니다.
 
 ```properties
-commonVersion=0.0.9
+commonVersion=0.0.11
 ```
 
 > **템플릿에 적힌 값이 최신이 아닐 수 있습니다.**
@@ -3456,7 +3456,7 @@ spring.config.import 에 optional: 이 붙어 있음
 |---|---|
 | Flyway 스크립트가 실제로 도는지 | `V1` · `V2` 와 이 서비스의 `V20` 까지 실행됩니다 |
 | 엔티티와 스키마가 맞는지 | `ddl-auto: validate` 라 컬럼이 어긋나면 빌드가 실패합니다 |
-| 자동 설정 6개가 켜지는지 | 함께 드러납니다 |
+| 자동 설정 7개가 켜지는지 | 함께 드러납니다 |
 
 ---
 
@@ -4595,7 +4595,7 @@ copy .env.example .env
 
 | 키 | 두는 곳 | 값 | 무엇을 하나 |
 |---|---|---|---|
-| `commonVersion` | `gradle.properties` | 예: `0.0.9` | 공통 모듈 버전 |
+| `commonVersion` | `gradle.properties` | 예: `0.0.11` | 공통 모듈 버전 |
 | `GPR_USER` · `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
 | `CONFIG_HOST` | 환경변수 | 기본값 `localhost` | 설정 서버 주소. 컨테이너와 AWS 에서만 지정 |
 | `DB_HOST` | 환경변수 | `localhost` | config 3계층의 `app.datasource.host` 가 참조 |
@@ -4606,6 +4606,7 @@ copy .env.example .env
 | `app.datasource.host` | config 3계층 | 환경별 주소 | **DB 를 옮길 때 고치는 자리가 이 한 줄입니다** |
 | `app.auditor.system-name` | config 1계층 (`SYSTEM`) | 배치만 2계층에서 덮음 | 인증 없이 도는 배치가 감사 컬럼에 남길 이름 |
 | `app.outbox.relay.enabled` | config 2계층 | 발행 서비스의 한 인스턴스만 `true` | 미발행 이벤트를 회수하는 스케줄러 |
+| `app.rest-client` | config 1계층 | `connect-timeout 2s` · `read-timeout 5s` | 다른 서비스를 부를 때의 시간 제한. 서비스마다 다르면 2계층에서 덮음 |
 | `app.logging.loki.url` | config 3계층 | 환경별 주소 | logback 이 읽는 전송 주소 |
 | `spring.jpa.hibernate.ddl-auto` | config 1계층 | `validate` | 스키마는 Flyway 가 관리합니다 |
 | 외부 API 키 · OAuth 시크릿 | 환경변수 | 제공자 콘솔에서 발급 | 설정 파일에 적지 않습니다 |
@@ -4821,7 +4822,7 @@ dependencies {
 버전은 `gradle.properties` 에 한 줄로 둡니다.
 
 ```properties
-commonVersion=0.0.9
+commonVersion=0.0.11
 ```
 
 > 버전을 `build.gradle` 에 직접 적지 않은 이유는 **고칠 자리를 파일 하나로
@@ -4952,9 +4953,9 @@ $env:GPR_TOKEN = (Get-Content <토큰 파일 경로>).Trim()
 
 ---
 
-### 7-3. 자동 설정 6개
+### 7-3. 자동 설정 7개
 
-`config/` 패키지의 6개 클래스가 `AutoConfiguration.imports` 에 등록되어 있습니다.
+`config/` 패키지의 7개 클래스가 `AutoConfiguration.imports` 에 등록되어 있습니다.
 **서비스는 의존성만 추가하면 조건에 맞는 것이 올라옵니다.**
 
 | 클래스 | 켜지는 조건 | 등록하는 Bean |
@@ -4964,6 +4965,7 @@ $env:GPR_TOKEN = (Get-Content <토큰 파일 경로>).Trim()
 | `CommonJpaAutoConfiguration` | spring-data-jpa | `AuditorProvider` · JPA Auditing 활성화 |
 | `CommonMessagingAutoConfiguration` | spring-data-jpa + spring-kafka | `OutboxEventRecorder` · `OutboxPublisher` · `OutboxCommitListener` · `OutboxRelay` · `InboxProcessor` |
 | `CommonKafkaAutoConfiguration` | spring-kafka | `RecordMessageConverter` · `KafkaSecurityInterceptor` · `DefaultErrorHandler` |
+| `CommonRestClientAutoConfiguration` | `RestClient` (spring-web) | `RestClientAuthInterceptor` · `internalRestClientBuilder` · `externalRestClientBuilder` |
 | `CommonAsyncAutoConfiguration` | 없음 | `@EnableAsync` |
 
 ---
@@ -4982,12 +4984,34 @@ hibernate-spatial 이 hibernate-core 를 거쳐 jakarta.persistence-api 를 전�
 
 **서비스가 같은 타입의 Bean 을 직접 정의하면 공통 모듈 쪽이 물러납니다.**
 
-모든 Bean 에 `@ConditionalOnMissingBean` 이 붙어 있습니다.
+대부분의 Bean 에 `@ConditionalOnMissingBean` 이 붙어 있습니다.
 
 > 로그인 경로를 열어야 하는 `auth` 가 자체 `SecurityFilterChain` 을 정의하는
 > 경우가 여기 해당합니다.
 >
 > **그때는 공통 모듈의 관리자 경로 보호도 함께 물러나므로 직접 넣어야 합니다.**
+
+---
+
+**`RestClient.Builder` 빌더 2개만 예외입니다. 일부러 안 붙였습니다.**
+
+| | 조건을 걸면 | 안 걸면 |
+|---|---|---|
+| 같은 타입의 다른 Bean | 스프링 부트가 `RestClient.Builder` 를 하나 정의합니다 | 같습니다 |
+| 그쪽이 먼저 평가되면 | 조건이 거짓이 되어 **공통 모듈의 빌더가 안 만들어집니다** | 항상 만들어집니다 |
+| 그쪽이 나중에 평가되면 | 만들어집니다 | 같습니다 |
+
+**결과가 자동 설정 사이의 평가 순서에 달리게 됩니다.** 그 순서에 기대지 않으려고
+조건을 걸지 않았습니다.
+
+> **같은 타입의 Bean 이 여럿이므로 주입은 언제나 `@Qualifier` 로 합니다.**
+> 형태는 [8-6](#8-6-다른-서비스나-바깥-시스템을-호출한다면) 에 있습니다.
+
+> **`RecordMessageConverter` 와 결론이 정반대라 헷갈리기 쉬운 자리입니다.**
+> 그쪽은 *서비스가 자기 것을 만들면 Bean 이 둘이 되어 어느 쪽도 적용되지 않는다* 라
+> **만들지 않는 것**이 규칙이고, 이쪽은 **조건을 붙이지 않는 것**이 답입니다.
+>
+> 기준은 하나입니다. **그 타입의 Bean 을 이미 누가 만들어 두느냐입니다.**
 
 <br><br>
 
@@ -5001,7 +5025,7 @@ hibernate-spatial 이 hibernate-core 를 거쳐 jakarta.persistence-api 를 전�
 ```
 com.pawtrail.common
 │
-├── config/                              자동 설정 6개
+├── config/                              자동 설정 7개
 │   └── Common*AutoConfiguration          조건에 맞으면 Bean 을 올림
 │
 ├── entity/BaseEntity                    모든 테이블이 상속하는 공통 컬럼 6개
@@ -5046,7 +5070,7 @@ com.pawtrail.common
     └── annotation/CurrentUser                   컨트롤러에서 사용자를 주입받음
 
 src/main/resources/
-├── META-INF/spring/AutoConfiguration.imports    config 6개를 자동 설정으로 등록
+├── META-INF/spring/AutoConfiguration.imports    config 7개를 자동 설정으로 등록
 └── db/migration/common/
     ├── V1__outbox.sql                           outbox 테이블
     └── V2__inbox.sql                            processed_event 테이블
@@ -5054,12 +5078,12 @@ src/main/resources/
 
 ---
 
-**`config/` — 자동 설정 6개**
+**`config/` — 자동 설정 7개**
 
 조건과 Bean 정의가 모두 여기 모입니다.
 
 > 자동 설정 클래스는 **컴포넌트 스캔에 걸리면 안 되는 특수한 부류**라
-> 한 폴더에 격리해 둡니다. 목록은 [7-3](#7-3-자동-설정-6개) 에 있습니다.
+> 한 폴더에 격리해 둡니다. 목록은 [7-3](#7-3-자동-설정-7개) 에 있습니다.
 
 ---
 
@@ -5432,16 +5456,21 @@ outboxEventRecorder.record(new PlaceUpdatedEvent(place.getId()));
 > `HeaderAuthenticationFilter` 는 **Bean 이 아니라 보안 자동 설정에서 직접
 > 생성합니다.** Bean 으로 두면 서블릿 전역 필터에도 등록돼 **두 번 돕니다.**
 
-`RestClientAuthInterceptor` 는 아직 연결되어 있지 않습니다.
+`RestClientAuthInterceptor` 는 `internalRestClientBuilder` 에 붙어 있습니다.
 
-> `RestClient.Builder` 에 붙이는 방식은 **서비스 간 호출을 처음 구현할 때
-> 정합니다.** [8-6](#8-6-다른-서비스나-바깥-시스템을-호출한다면) 참고.
+> **공통 모듈이 붙여 두므로 서비스가 따로 연결할 일이 없습니다.** 그 빌더로 만든
+> `RestClient` 로 호출하면 `X-User-Id` 와 `X-User-Role` 이 자동으로 실립니다.
+>
+> **`externalRestClientBuilder` 에는 붙이지 않습니다.** 우리가 만들지 않은
+> 시스템에 우리 사용자 식별자를 보낼 이유가 없습니다.
+>
+> 쓰는 법은 [8-6](#8-6-다른-서비스나-바깥-시스템을-호출한다면) 에 있습니다.
 
 ---
 
 **`AutoConfiguration.imports`**
 
-`config/` 의 6개를 자동 설정으로 등록하는 파일입니다.
+`config/` 의 7개를 자동 설정으로 등록하는 파일입니다.
 
 > **이 파일이 jar 에 안 들어가면 아무 Bean 도 올라오지 않는데 오류는 나지
 > 않습니다.** 공통 모듈을 빌드할 때 확인할 자리입니다.
@@ -7192,22 +7221,28 @@ import com.pawtrail.common.response.CommonApiResponse;
 import com.pawtrail.verdict.domain.provider.PolicyProvider;
 import com.pawtrail.verdict.domain.provider.dto.PolicyData;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
-@RequiredArgsConstructor
 public class PolicyProviderImpl implements PolicyProvider {
 
     private final RestClient restClient;
+
+    public PolicyProviderImpl(
+            @Qualifier("internalRestClientBuilder") RestClient.Builder builder) {
+
+        // 부를 서비스의 이름을 여기서 한 번만 박아 둠
+        this.restClient = builder.baseUrl("lb://policy-service").build();
+    }
 
     @Override
     public PolicyData findByPlaceId(UUID placeId) {
         // 응답이 CommonApiResponse 로 감싸여 오므로 벗겨서 돌려줌
         CommonApiResponse<PolicyData> response = restClient.get()
-                .uri("lb://policy-service/internal/policies/{placeId}", placeId)
+                .uri("/internal/policies/{placeId}", placeId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 
@@ -7215,6 +7250,49 @@ public class PolicyProviderImpl implements PolicyProvider {
     }
 }
 ```
+
+---
+
+**빌더를 주입받습니다. `RestClient.builder()` 를 직접 부르지 않습니다.**
+
+직접 만들면 인증 헤더도 `lb://` 해석도 시간 제한도 붙지 않습니다. 공통 모듈이
+그 셋을 미리 걸어 둔 빌더를 2개 내어 줍니다.
+
+| | `internalRestClientBuilder` | `externalRestClientBuilder` |
+|---|---|---|
+| 부르는 곳 | 우리 서비스 | 카카오맵 · 기상청 · 관광공사 |
+| 주소 | `lb://policy-service` | `https://apis.data.go.kr` |
+| 주소를 푸는 것 | 유레카 | 설정에 박힌 고정 주소 |
+| 인증 헤더 | `X-User-Id` · `X-User-Role` 을 실음 | **싣지 않음** |
+
+---
+
+**`@Qualifier` 를 반드시 붙입니다. 세 가지가 걸려 있습니다.**
+
+```
+1  같은 타입의 Bean 이 여럿이라 이름으로 골라야 함
+     빠뜨리면 기동에서 NoUniqueBeanDefinitionException 으로 걸림
+
+2  @RequiredArgsConstructor 를 쓸 수 없음
+     롬복이 만드는 생성자에는 @Qualifier 가 붙지 않아
+     어느 빌더가 들어올지 정해지지 않음 — 생성자를 손으로 씀
+
+3  @Primary 를 둔 빌더가 없는 것은 의도임
+     두면 빠뜨렸을 때 하나가 조용히 주입되는데
+     바깥 API 를 부르는 자리에 internal 이 들어가면 호출할 때에야 드러남
+```
+
+---
+
+**`baseUrl` 은 생성자에서 한 번만 겁니다.**
+
+빌더는 주입받을 때마다 새 인스턴스가 오므로 **다른 provider 의 빌더에 영향을 주지
+않습니다.** `uri()` 에는 경로만 적습니다.
+
+> **시간 제한은 `config` 저장소 1계층의 `app.rest-client` 에 있습니다.**
+> `connect-timeout` 2초 · `read-timeout` 5초입니다. 서비스마다 달라야 하면
+> 2계층에서 덮어씁니다. 단순 조회는 짧아도 되지만 **LLM 을 부르는 자리는
+> 수십 초가 걸립니다.**
 
 ---
 
