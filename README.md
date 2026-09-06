@@ -720,7 +720,7 @@ rootProject.name = 'place-service'
 공통 모듈 버전을 최신으로 맞춥니다.
 
 ```properties
-commonVersion=0.0.12
+commonVersion=0.0.13
 ```
 
 > **템플릿에 적힌 값이 최신이 아닐 수 있습니다.**
@@ -4595,7 +4595,7 @@ copy .env.example .env
 
 | 키 | 두는 곳 | 값 | 무엇을 하나 |
 |---|---|---|---|
-| `commonVersion` | `gradle.properties` | 예: `0.0.12` | 공통 모듈 버전 |
+| `commonVersion` | `gradle.properties` | 예: `0.0.13` | 공통 모듈 버전 |
 | `GPR_USER` · `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
 | `CONFIG_HOST` | 환경변수 | 기본값 `localhost` | 설정 서버 주소. 컨테이너와 AWS 에서만 지정 |
 | `DB_HOST` | 환경변수 | `localhost` | config 3계층의 `app.datasource.host` 가 참조 |
@@ -4822,7 +4822,7 @@ dependencies {
 버전은 `gradle.properties` 에 한 줄로 둡니다.
 
 ```properties
-commonVersion=0.0.12
+commonVersion=0.0.13
 ```
 
 > 버전을 `build.gradle` 에 직접 적지 않은 이유는 **고칠 자리를 파일 하나로
@@ -7305,6 +7305,22 @@ public class PolicyProviderImpl implements PolicyProvider {
 
 빌더는 주입받을 때마다 새 인스턴스가 오므로 **다른 provider 의 빌더에 영향을 주지
 않습니다.** `uri()` 에는 경로만 적습니다.
+
+---
+
+**봉투를 벗기려면 공통 모듈이 `0.0.13` 이상이어야 합니다.**
+
+`CommonApiResponse` 는 **만드는 쪽과 읽는 쪽이 둘 다 쓰는 클래스**인데
+`0.0.12` 까지는 만드는 길만 있었습니다.
+
+```
+0.0.12 까지   생성자가 private 이고 @JsonCreator 가 없어 받는 쪽이 예외로 실패
+0.0.13 부터   읽을 수 있음
+```
+
+> **부르는 쪽이 그 예외를 삼키면 값만 조용히 비고 화면은 멀쩡해 보입니다.**
+> 위 예시처럼 `catch (Exception)` 으로 감싼 provider 라면 **실패 이유가
+> 로그에만 남습니다.** `gradle.properties` 의 버전을 먼저 확인합니다.
 
 > **시간 제한은 `config` 저장소 1계층의 `app.rest-client` 에 있습니다.**
 > `connect-timeout` 2초 · `read-timeout` 5초입니다. 서비스마다 달라야 하면
