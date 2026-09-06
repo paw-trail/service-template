@@ -720,7 +720,7 @@ rootProject.name = 'place-service'
 공통 모듈 버전을 최신으로 맞춥니다.
 
 ```properties
-commonVersion=0.0.11
+commonVersion=0.0.12
 ```
 
 > **템플릿에 적힌 값이 최신이 아닐 수 있습니다.**
@@ -4595,7 +4595,7 @@ copy .env.example .env
 
 | 키 | 두는 곳 | 값 | 무엇을 하나 |
 |---|---|---|---|
-| `commonVersion` | `gradle.properties` | 예: `0.0.11` | 공통 모듈 버전 |
+| `commonVersion` | `gradle.properties` | 예: `0.0.12` | 공통 모듈 버전 |
 | `GPR_USER` · `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
 | `CONFIG_HOST` | 환경변수 | 기본값 `localhost` | 설정 서버 주소. 컨테이너와 AWS 에서만 지정 |
 | `DB_HOST` | 환경변수 | `localhost` | config 3계층의 `app.datasource.host` 가 참조 |
@@ -4822,7 +4822,7 @@ dependencies {
 버전은 `gradle.properties` 에 한 줄로 둡니다.
 
 ```properties
-commonVersion=0.0.11
+commonVersion=0.0.12
 ```
 
 > 버전을 `build.gradle` 에 직접 적지 않은 이유는 **고칠 자리를 파일 하나로
@@ -4965,7 +4965,7 @@ $env:GPR_TOKEN = (Get-Content <토큰 파일 경로>).Trim()
 | `CommonJpaAutoConfiguration` | spring-data-jpa | `AuditorProvider` · JPA Auditing 활성화 |
 | `CommonMessagingAutoConfiguration` | spring-data-jpa + spring-kafka | `OutboxEventRecorder` · `OutboxPublisher` · `OutboxCommitListener` · `OutboxRelay` · `InboxProcessor` |
 | `CommonKafkaAutoConfiguration` | spring-kafka | `RecordMessageConverter` · `KafkaSecurityInterceptor` · `DefaultErrorHandler` |
-| `CommonRestClientAutoConfiguration` | `RestClient` (spring-web) | `RestClientAuthInterceptor` · `internalRestClientBuilder` · `externalRestClientBuilder` |
+| `CommonRestClientAutoConfiguration` | `RestClient` (spring-web) | `RestClientAuthInterceptor` · `defaultRestClientBuilder` · `internalRestClientBuilder` · `externalRestClientBuilder` |
 | `CommonAsyncAutoConfiguration` | 없음 | `@EnableAsync` |
 
 ---
@@ -4993,25 +4993,40 @@ hibernate-spatial 이 hibernate-core 를 거쳐 jakarta.persistence-api 를 전�
 
 ---
 
-**`RestClient.Builder` 빌더 2개만 예외입니다. 일부러 안 붙였습니다.**
+**`RestClient.Builder` 빌더 3개만 예외입니다. 일부러 안 붙였습니다.**
 
-| | 조건을 걸면 | 안 걸면 |
-|---|---|---|
-| 같은 타입의 다른 Bean | 스프링 부트가 `RestClient.Builder` 를 하나 정의합니다 | 같습니다 |
-| 그쪽이 먼저 평가되면 | 조건이 거짓이 되어 **공통 모듈의 빌더가 안 만들어집니다** | 항상 만들어집니다 |
-| 그쪽이 나중에 평가되면 | 만들어집니다 | 같습니다 |
-
-**결과가 자동 설정 사이의 평가 순서에 달리게 됩니다.** 그 순서에 기대지 않으려고
-조건을 걸지 않았습니다.
-
-> **같은 타입의 Bean 이 여럿이므로 주입은 언제나 `@Qualifier` 로 합니다.**
-> 형태는 [8-6](#8-6-다른-서비스나-바깥-시스템을-호출한다면) 에 있습니다.
+같은 타입의 Bean 이 이미 여럿이라 **조건이 언제나 거짓이 되어 아무것도 안 만들어집니다.**
 
 > **`RecordMessageConverter` 와 결론이 정반대라 헷갈리기 쉬운 자리입니다.**
 > 그쪽은 *서비스가 자기 것을 만들면 Bean 이 둘이 되어 어느 쪽도 적용되지 않는다* 라
 > **만들지 않는 것**이 규칙이고, 이쪽은 **조건을 붙이지 않는 것**이 답입니다.
 >
 > 기준은 하나입니다. **그 타입의 Bean 을 이미 누가 만들어 두느냐입니다.**
+
+---
+
+**빌더가 3개인 이유입니다.** 서비스가 쓰는 것은 아래 둘뿐입니다.
+
+| Bean | 무엇이 붙어 있나 | 누가 쓰나 |
+|---|---|---|
+| `defaultRestClientBuilder` | **아무것도 없음.** `@Primary` | 유레카처럼 **타입으로 찾는 라이브러리** |
+| `internalRestClientBuilder` | `@LoadBalanced` · 인증 인터셉터 · 시간 제한 | 우리 서비스를 부르는 provider |
+| `externalRestClientBuilder` | 시간 제한 | 바깥 API 를 부르는 provider |
+
+**맨 빌더가 없으면 유레카 등록이 실패합니다.** 유레카 클라이언트가 이 타입을
+`ObjectProvider` 로 찾는데, 후보가 2개 이상이고 `@Primary` 가 없으면
+`NoUniqueBeanDefinitionException` 을 던지기 때문입니다.
+
+```
+등록 실패  ──▶  유레카에 서비스가 없음  ──▶  게이트웨이가 lb:// 를 못 풂  ──▶  503
+```
+
+> **`/actuator/health` 는 그동안에도 `UP` 입니다.** 유레카 헬스 컴포넌트가
+> `UNKNOWN` 이면 전체 판정에서 무시되기 때문에 **기동 로그를 보지 않으면
+> 모릅니다.** 공통 모듈 `0.0.10` 에서 실제로 겪었습니다.
+
+> **주입은 언제나 `@Qualifier` 로 합니다.** 형태는
+> [8-6](#8-6-다른-서비스나-바깥-시스템을-호출한다면) 에 있습니다.
 
 <br><br>
 
@@ -7256,7 +7271,7 @@ public class PolicyProviderImpl implements PolicyProvider {
 **빌더를 주입받습니다. `RestClient.builder()` 를 직접 부르지 않습니다.**
 
 직접 만들면 인증 헤더도 `lb://` 해석도 시간 제한도 붙지 않습니다. 공통 모듈이
-그 셋을 미리 걸어 둔 빌더를 2개 내어 줍니다.
+그 셋을 미리 걸어 둔 빌더를 내어 줍니다.
 
 | | `internalRestClientBuilder` | `externalRestClientBuilder` |
 |---|---|---|
@@ -7270,17 +7285,19 @@ public class PolicyProviderImpl implements PolicyProvider {
 **`@Qualifier` 를 반드시 붙입니다. 세 가지가 걸려 있습니다.**
 
 ```
-1  같은 타입의 Bean 이 여럿이라 이름으로 골라야 함
-     빠뜨리면 기동에서 NoUniqueBeanDefinitionException 으로 걸림
+1  같은 타입의 Bean 이 셋이라 이름으로 골라야 함
 
 2  @RequiredArgsConstructor 를 쓸 수 없음
      롬복이 만드는 생성자에는 @Qualifier 가 붙지 않아
      어느 빌더가 들어올지 정해지지 않음 — 생성자를 손으로 씀
 
-3  @Primary 를 둔 빌더가 없는 것은 의도임
-     두면 빠뜨렸을 때 하나가 조용히 주입되는데
-     바깥 API 를 부르는 자리에 internal 이 들어가면 호출할 때에야 드러남
+3  빠뜨려도 기동은 됨.  @Primary 인 defaultRestClientBuilder 가 조용히 들어옴
+     그 빌더에는 로드밸런서 인터셉터가 없어 lb:// 를 못 풂
+     기동이 아니라 실제로 호출하는 순간에 실패함
 ```
+
+> **셋째 항목이 이 절에서 가장 놓치기 쉬운 자리입니다.** 오류가 늦게 드러나므로
+> provider 를 만들 때마다 `@Qualifier` 가 있는지 눈으로 확인합니다.
 
 ---
 
