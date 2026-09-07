@@ -5814,7 +5814,7 @@ public void onPlaceUpdated(EventEnvelope<PlaceUpdatedMessage> envelope) {
 
 ---
 
-**지켜야 할 것 셋입니다.**
+**지켜야 할 것 넷입니다.**
 
 **하나 — 토픽 문자열이 발행 쪽과 정확히 같아야 합니다.**
 
@@ -5840,6 +5840,45 @@ public void onPlaceUpdated(EventEnvelope<PlaceUpdatedMessage> envelope) {
 ```
 
 > `try-catch` 로 삼키면 **실패한 이벤트가 성공으로 처리되어 사라집니다.**
+
+---
+
+**넷 — ⛔리스너를 만들면 `contextLoads` 가 깨집니다.**
+
+리스너가 하나라도 생기는 순간 테스트가 실패합니다. **코드 문제가 아닙니다.**
+
+```
+증상   IllegalStateException at Assert.java
+      실제 메시지는  No group.id found in consumer config
+
+원인   테스트는 설정 서버를 꺼서 config 저장소 값이 하나도 안 내려옴
+        group-id          config 1계층에 있음
+        bootstrap-servers config 3계층에 있음
+      리스너 컨테이너가 기동하면서 그 값을 찾다가 실패함
+```
+
+**테스트에서는 리스너 컨테이너를 띄우지 않습니다.**
+
+```yaml
+# src/test/resources/application.yml
+spring:
+  kafka:
+    listener:
+      auto-startup: false
+```
+
+> **템플릿에 이미 들어 있습니다.** 리스너를 만드는 서비스가 앞으로 여럿이라
+> 각자 겪지 않도록 미리 넣어 두었습니다.
+
+**⛔테스트 yml 에 카프카 값을 복사하는 방법은 쓰지 않습니다.**
+
+| | 왜 |
+|---|---|
+| 값을 복사 | 브로커가 없으면 **재연결 로그가 테스트 출력을 뒤덮습니다** |
+| Testcontainers 로 카프카 기동 | `contextLoads` 하나에 브로커까지 띄우면 **빌드가 눈에 띄게 느려집니다** |
+
+> **리스너가 실제로 도는지는 실물로 확인합니다.** 컨테이너를 띄우고 메시지를 넣어
+> 보는 것이며, `contextLoads` 는 빈 배선만 봅니다.
 
 <br><br>
 
@@ -6125,7 +6164,30 @@ account.created     ⛔예외
 같은 계정의 `account.withdrawn` 이 먼저 나간 뒤에 재발행되면
 **이미 탈퇴한 계정의 데이터가 생깁니다.**
 
-> **받는 쪽에서 막아야 하며 그 방식은 아직 정해지지 않았습니다.**
+**받는 쪽이 막습니다. `user` 가 그 방식을 세웠습니다.**
+
+```
+account.withdrawn 을 받았는데 프로필이 없으면
+        │
+        └──▶ 계정 식별자만 채우고 삭제 시각을 찍은 *삭제 표시 행*을 만들어 둠
+
+나중에 account.created 가 재발행되어 도착하면
+        │
+        └──▶ 처리 전에 "삭제된 것까지 포함해" 그 행이 있는지 보고, 있으면 조용히 넘어감
+```
+
+| | |
+|---|---|
+| 스키마 변경 | **0.** 넣을 값이 전부 이미 있는 컬럼임 |
+| 조회 | ⛔`@SQLRestriction` 이 삭제 표시 행을 가리므로 **네이티브 쿼리로 우회** |
+| 같은 상황을 겪을 서비스 | `account.created` 를 받는 서비스. 지금은 `user` 뿐 |
+
+> **아무것도 안 하는 방법은 쓰지 않았습니다.** 기본 키 충돌로 INSERT 가 실패해
+> 데이터는 안전하지만 **DLQ 로 가서 관리자 화면에 멈춘 이벤트로 뜹니다.**
+> 그 화면은 *"비어 있는 것이 정상"* 으로 정해 두었는데 정상 동작이 거기 뜨면
+> 그 규칙이 무너집니다.
+
+> 자세한 것은 `paw-trail/user-service` README 2-5 에 있습니다.
 
 > **순서 자체가 의미를 갖는 이벤트를 나중에 추가한다면 이 전제가 깨집니다.**
 
