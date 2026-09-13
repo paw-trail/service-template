@@ -225,3 +225,38 @@ d.edge("us","l","ai","r",X,"gpt-5.6-luna · 20초",dash=True,via=[(470,440),(470
 d.note(40,858,"프로필을 만드는 API 가 없음 — account.created 로 생기고 account.withdrawn 으로 지워짐 · 소프트 딜리트는 user_profile 하나뿐 · 이벤트를 발행하지 않아 outbox 는 비어 있음")
 d.note(40,880,"목록 조회 하나가 place · verdict · review 셋을 부름 — place 가 실패하면 목록 전체가 실패하고 나머지 둘은 그 값만 비움")
 d.save("user-service","user-service 를 중심으로 · 직접 연결된 것만")
+
+# ── place-service
+d=D(1860,940)
+d.me("pc",820,450,360,110,"dom","place-service  :8084",
+     "여러 소스가 가리키는 같은 곳을 하나로|API 16개 · 서비스 7개")
+d.node("gw",180,450,240,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
+d.node("cf",820,120,300,80,"plat","config-server","포트 · DB · 카카오 키")
+d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
+d.node("pg",1560,300,300,100,"data","PostgreSQL  place_db",
+       "place 17,325행 · 소스 연결 · 편의시설|반영 대기 · 분리 이력  (표 5개 + outbox)")
+d.node("ka",180,150,240,80,"ext","카카오 로컬","좌표가 없는 장소를 주소로",dash=True)
+d.node("ig",1560,620,300,110,"domn","ingest-service",
+       "적재를 넘겨 받음 (bulk)|원문을 내어 줌 (documents)|평소에는 안 떠 있음")
+d.node("us",180,700,240,100,"domn","user-service","즐겨찾기 · 방문 · 일정이|장소 이름과 사진을 물어봄")
+d.node("kf",700,830,300,80,"data","Kafka","place.updated 발행|받는 것은 없음")
+d.node("se",1300,830,300,80,"fut","search-service","place.updated 를 받아 색인|아직 없음",dash=True)
+d.edge("gw","r","pc","l",B,"공개 8 · 관리자 6",lx=480,ly=432)
+d.edge("cf","b","pc","t",V,"기동 시 설정")
+d.edge("pc","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
+d.edge("pc","r","pg","l",O,"JPA · PostGIS · Flyway V20~25",
+       via=[(1120,450),(1120,300)],lx=1200,ly=378)
+d.edge("ig","l","pc","r",G,"POST /internal/places/bulk",
+       a_pt=(1410,590),via=[(1260,590),(1260,470)],b_pt=(1000,470),lx=1270,ly=545,anchor="start")
+d.edge("pc","r","ig","l",G,"GET /internal/raw/{placeId}/documents",
+       a_pt=(1000,505),via=[(1160,505),(1160,650)],b_pt=(1410,650),lx=1170,ly=700,anchor="start")
+d.edge("us","r","pc","l",G,"GET /internal/places?ids=",
+       via=[(480,700),(480,480)],b_pt=(640,480),lx=310,ly=660,anchor="start")
+d.edge("pc","b","kf","t",O,"Outbox 로 발행  (수신하지 않음)",
+       a_pt=(900,505),via=[(900,660),(780,660)],b_pt=(780,790),lx=910,ly=600,anchor="start")
+d.edge("kf","r","se","l",X,"place.updated",dash=True,lx=1000,ly=822,anchor="start")
+d.edge("pc","l","ka","r",X,"지오코딩 · 3초",dash=True,
+       via=[(480,450),(480,150)],lx=490,ly=300,anchor="start")
+d.note(40,880,"소스가 셋이라 같은 곳이 세 번 들어옴 — 주소가 같고 이름이 같으면 합치고, 아니면 100m 안에서 이름이 같을 때만 합침 · 관리자가 고친 장소는 잠겨 수집이 건드리지 않고 대기 목록에 쌓임")
+d.note(40,902,"이 서비스만 Outbox Relay 가 켜져 있음 — 인스턴스를 늘리면 같은 행을 두 번 집으므로 한 대만 켜지도록 갈라야 함")
+d.save("place-service","place-service 를 중심으로 · 직접 연결된 것만")
