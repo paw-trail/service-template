@@ -2900,14 +2900,16 @@ Redis 와 Kafka 는 사람당 하나만 떠 있어야 하므로 서비스 저장
 | `tools` | Kafka UI | 토픽에 메시지가 실렸는지 볼 때 | 권장 |
 | `observability` | Prometheus · Grafana · Loki · Zipkin | 로그·지표·추적을 볼 때 | 선택 |
 | `edge` | nginx | 프론트엔드와 함께 확인할 때 | ⚠**아직 compose 에 없음** |
-| `pipeline` | ingest · extract | 수집·추출 배치를 돌릴 때만 | ⚠**아직 compose 에 없음** |
+| `pipeline` | ingest · extract | 수집·추출 배치를 돌릴 때만 | ⚠**extract 만 아직 compose 에 없음** |
 | `app` | 개발이 끝난 도메인 서비스 | 그 서비스를 안 고칠 때 | 선택 |
 
-> **`app` 에는 이미지가 올라간 서비스만 들어 있습니다.** 지금은 auth 하나입니다.
+> **`app` 에는 이미지가 올라간 서비스만 들어 있습니다.** 지금은 auth · user · place · pet 넷입니다.
 > 자기 서비스를 여기 추가하는 방법은 [5-4](#5-4-infra-의-compose-에-등록하기) 에 있습니다.
 
-> **`edge` 와 `pipeline` 은 해당 저장소가 완성된 뒤에 추가됩니다.**
+> **`edge` 는 해당 저장소가 완성된 뒤에 추가됩니다.**
 > 그 프로파일을 켜도 지금은 아무것도 뜨지 않습니다.
+>
+> **`pipeline` 에는 `ingest` 가 들어가 있습니다.** `extract` 만 아직 없습니다.
 
 ---
 
@@ -3880,8 +3882,8 @@ docker compose exec postgres psql -U pawtrail -c "CREATE DATABASE auth_db OWNER 
 
 지운 뒤 서비스를 다시 띄우면 Flyway 가 스키마를 다시 만듭니다.
 
-> **`user` · `pet` 서비스가 만들어지면 이 스크립트에 프로필과 반려동물 등록이
-> 추가됩니다.** 지금은 `auth` 만 있어 계정까지만 채웁니다.
+> **이 스크립트는 아직 계정까지만 채웁니다.** `user` 와 `pet` 이 만들어졌으므로
+> 프로필과 반려동물 등록을 더할 자리인데 아직 하지 않았습니다.
 
 <br><br>
 
@@ -4270,7 +4272,7 @@ GitHub 조직 → Packages → 해당 패키지 → Package settings
 
 `paw-trail/infra` 의 `docker-compose.yml` 에 **`app` 프로파일로 추가합니다.**
 
-> **아직 도메인 서비스가 하나도 들어 있지 않습니다.**
+> **지금은 auth · user · place · pet 넷이 들어 있습니다.**
 > 이미지가 올라간 서비스부터 하나씩 추가합니다.
 
 ---
