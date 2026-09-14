@@ -1139,8 +1139,8 @@ serviceName: 'place'          →  ghcr.io/paw-trail/place 로 올림
 
 | 방향 | 상대 | 방식 |
 |---|---|---|
-| 호출함 | policy | `GET /internal/policies/{placeId}` |
-| 받음 | ingest | `place.ingested` |
+| 호출함 | ingest | `GET /internal/raw/{placeId}/documents` |
+| 받음 | ingest | `POST /internal/places/bulk` |
 | 발행 | — | `place.updated` |
 
 ## 로컬 실행
@@ -1158,6 +1158,12 @@ docker compose up -d
 > **지침을 남겨 두지 않습니다.** 서비스마다 같은 분량이 복사되면
 > 한 곳을 고칠 때 14곳을 고쳐야 합니다. 공통 지침은 `service-template` 하나만
 > 유지하고 서비스 README 는 **그 서비스만의 것**을 적습니다.
+
+> ⚠**위는 최소 형태이고 실제로는 더 길어졌습니다.**
+> `auth` · `user` · `ingest` · `place` 의 README 가 전부 수천 줄입니다.
+> 읽는 사람을 **"MSA 를 말만 들어 본 사람"** 으로 잡았기 때문이며,
+> 그 기준으로는 위 분량으로 레포를 파악할 수 없습니다.
+> 항목 구성은 그대로 쓰되 각 항목을 왜 그렇게 정했는지까지 적습니다.
 
 <br><br>
 
@@ -2016,7 +2022,7 @@ TOPICS=(
   "pet.profile.updated"
   "account.created"
   "account.withdrawn"
-  "report.reviewed"
+  "report.resolved"
 )
 ```
 
@@ -2029,7 +2035,7 @@ TOPICS=(
   "pet.profile.updated"
   "account.created"
   "account.withdrawn"
-  "report.reviewed"
+  "report.resolved"
   "review.created"        # 추가
 )
 ```
@@ -7803,11 +7809,11 @@ user_db   ←  user_svc 만 접속
 | place | `place.updated` | — |
 | policy | `policy.changed` | — |
 | pet | `pet.profile.updated` | `account.withdrawn` |
-| report | `report.reviewed` | `account.withdrawn` |
+| report | `report.resolved` | `account.withdrawn` |
 | review | — | `account.withdrawn` |
 | user | — | `account.created` · `account.withdrawn` |
 | search | — | `place.updated` |
-| notification | — | `policy.changed` · `report.reviewed` · `account.withdrawn` |
+| notification | — | `policy.changed` · `report.resolved` · `account.withdrawn` |
 | verdict | — | `policy.changed` · `pet.profile.updated` (inbox 미사용) |
 | ingest · extract · congestion · route | — | — |
 
@@ -7822,7 +7828,7 @@ user_db   ←  user_svc 만 접속
 | `policy.changed` | 동반 조건이 바뀌어 알림 대상과 판정 캐시가 낡았습니다 | `{placeId, policyVersion, changedFields[], hasConflict}` |
 | `pet.profile.updated` | 반려동물 정보가 바뀌어 판정 캐시가 낡았습니다 | `{petId, accountId, verdictRelevantChanged}` |
 | `account.withdrawn` | 탈퇴했으므로 각자 가진 사용자 데이터를 지워야 합니다 | `{accountId}` |
-| `report.reviewed` | 제보 처리가 끝나 제보자에게 알려야 합니다 | `{reportId, accountId, status, memo}` |
+| `report.resolved` | 제보 처리가 끝나 제보자에게 알려야 합니다 | `{reportId, accountId, reportType, status, memo}` |
 
 ---
 
