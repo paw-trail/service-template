@@ -261,3 +261,38 @@ d.note(40,880,"소스가 넷이라 같은 곳이 네 번 들어옴 — 주소가
 d.note(40,902,"좌표 출처가 셋이고 조합마다 기준이 다름 — 원본끼리와 변환이 낀 것은 100m, 지오코딩이 낀 것은 300m, 지오코딩끼리는 합치지 않음")
 d.note(40,924,"이 서비스만 Outbox Relay 가 켜져 있음 — 인스턴스를 늘리면 같은 행을 두 번 집으므로 한 대만 켜지도록 갈라야 함")
 d.save("place-service","place-service 를 중심으로 · 직접 연결된 것만")
+
+# ── pet-service
+d=D(1860,960)
+d.me("pt",820,450,360,110,"dom","pet-service  :8083",
+     "판정 입력값의 소유자 — 체중 · 장비 · 접종|API 11개  (공개 7 · internal 2 · 관리자 2)")
+d.node("gw",180,450,240,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
+d.node("cf",820,120,300,80,"plat","config-server","포트 · DB · S3 키")
+d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
+d.node("pg",1560,300,300,110,"data","PostgreSQL  pet_db",
+       "pet · breed  (표 2개 + outbox · inbox)|견종 마스터 45행 — 맹견 5종 포함|크기는 체중에서 계산해 채움")
+d.node("s3",180,150,240,80,"ext","AWS S3","반려동물 사진|브라우저가 직접 올림")
+d.node("rv",1560,620,300,110,"fut","review-service",
+       "후기를 쓸 때 견종 · 체중을|스냅샷으로 복사해 감|아직 없음",dash=True)
+d.node("vd",180,700,240,100,"fut","verdict-service","판정 재료로|이 반려동물을 물어봄|아직 없음",dash=True)
+d.node("kf",700,810,300,80,"data","Kafka","pet.profile.updated 발행|account.withdrawn 수신")
+d.node("au",1300,810,300,80,"domn","auth-service","탈퇴를 알림")
+d.edge("gw","r","pt","l",B,"공개 7 · 관리자 2",lx=480,ly=434)
+d.edge("cf","b","pt","t",V,"기동 시 설정")
+d.edge("pt","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
+d.edge("pt","r","pg","l",O,"JPA · Flyway V20~21",via=[(1120,450),(1120,300)],lx=1200,ly=378)
+d.edge("rv","l","pt","r",G,"GET /internal/pets?ids=   상한 100 · 소유권 검증",dash=True,
+       a_pt=(1410,590),via=[(1260,590),(1260,470)],b_pt=(1000,470),lx=1272,ly=545,anchor="start")
+d.edge("vd","r","pt","l",G,"GET /internal/pets/{petId}",dash=True,
+       via=[(480,700),(480,480)],b_pt=(640,480),lx=494,ly=592,anchor="start")
+d.edge("pt","b","kf","t",O,"Outbox 로 발행",
+       a_pt=(900,505),via=[(900,660),(790,660)],b_pt=(790,770),lx=912,ly=600,anchor="start")
+d.edge("kf","t","pt","b",O,"account.withdrawn 을 받아 지움",
+       a_pt=(610,770),via=[(610,620),(700,620)],b_pt=(700,505),lx=598,ly=632,anchor="end")
+d.edge("au","l","kf","r",X,"account.withdrawn",lx=1010,ly=802,anchor="start")
+d.edge("pt","l","s3","r",X,"주소만 발급 · 탈퇴 시 객체 삭제",dash=True,
+       a_pt=(640,398),via=[(430,398),(430,150)],lx=492,ly=300,anchor="start")
+d.note(40,880,"크기는 견종이 아니라 체중으로만 가름 — SMALL 10kg 미만 · MEDIUM 10~25kg 미만 · LARGE 25kg 이상 · 서버가 채우되 사용자가 고친 값이 이김")
+d.note(40,902,"견종 마스터는 맹견 판정과 종 구분에만 쓰임 — 크기 기본값 컬럼을 두지 않아 견종을 늘리거나 줄여도 판정이 달라지지 않음")
+d.note(40,924,"내어 주는 두 API 는 소유권 검증이 필수임 — 없으면 아무 식별자나 넣어 남의 반려동물 기준으로 판정을 받아볼 수 있음")
+d.save("pet-service","pet-service 를 중심으로 · 직접 연결된 것만")
