@@ -278,10 +278,18 @@ GitHub 에서 `paw-trail/service-template` 페이지를 엽니다.
 
 ② Owner          paw-trail          조직을 고릅니다. 개인 계정이 아닙니다
    Repository     place-service      저장소명 규칙은 아래 참고
-   Private        선택
+   Public         선택
 
 ③ Create repository
 ```
+
+> ⛔**`Public` 이어야 합니다.** paw-trail 의 저장소는 전부 공개입니다.
+> 비공개로 만들면 **CodeRabbit 이 Free 요금제로 떨어져 PR 요약만 올라오고
+> 코드 리뷰 코멘트가 아예 달리지 않습니다.** `.coderabbit.yaml` 은 그대로인데
+> 리뷰만 안 오므로 설정 파일을 아무리 들여다봐도 원인이 드러나지 않습니다.
+>
+> 저장소 공개 여부와 **컨테이너 이미지 공개 여부는 별개입니다.**
+> 이미지는 처음 올릴 때 비공개이므로 [5-3](#5-3-이미지-빌드와-push) 에서 따로 바꿉니다.
 
 > **Use this template** 은 fork 와 다릅니다. fork 는 원본과 연결이 남지만
 > 이것은 **파일만 복사하고 이력 없이 새로 시작**합니다.
