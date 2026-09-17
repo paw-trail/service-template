@@ -296,3 +296,35 @@ d.note(40,880,"크기는 견종이 아니라 체중으로만 가름 — SMALL 10
 d.note(40,902,"견종 마스터는 맹견 판정과 종 구분에만 쓰임 — 크기 기본값 컬럼을 두지 않아 견종을 늘리거나 줄여도 판정이 달라지지 않음")
 d.note(40,924,"내어 주는 두 API 는 소유권 검증이 필수임 — 없으면 아무 식별자나 넣어 남의 반려동물 기준으로 판정을 받아볼 수 있음")
 d.save("pet-service","pet-service 를 중심으로 · 직접 연결된 것만")
+
+# ── policy-service
+d=D(1860,960)
+d.me("po",820,450,360,110,"dom","policy-service  :8085",
+     "장소마다 동반 조건을 한 벌로 합쳐 둠|API 8개  (공개 1 · internal 2 · 관리자 5)")
+d.node("gw",180,450,240,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
+d.node("cf",820,120,300,80,"plat","config-server","포트 · DB")
+d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
+d.node("pg",1560,300,300,110,"data","PostgreSQL  policy_db",
+       "소스별 조건 · 합친 조건 · 근거 · 충돌 · 정정 이력|표 5개 + outbox · inbox|조건 20칸 — null 은 정보 없음")
+d.node("ex",1560,620,300,110,"fut","extract-service",
+       "원문에서 동반 조건을 뽑아|소스마다 한 벌씩 넣음|아직 없음",dash=True)
+d.node("vd",180,700,240,100,"fut","verdict-service","판정할 때 조건 20칸과|근거를 한 번에 물어봄|아직 없음",dash=True)
+d.node("kf",700,810,300,80,"data","Kafka","policy.changed 발행|받는 것은 없음")
+d.node("nt",1300,810,300,80,"fut","notification-service","즐겨찾기한 사람에게 알림|아직 없음",dash=True)
+d.edge("gw","r","po","l",B,"공개 1 · 관리자 5",lx=480,ly=434)
+d.edge("cf","b","po","t",V,"기동 시 설정")
+d.edge("po","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
+d.edge("po","r","pg","l",O,"JPA · Flyway V20~24 · 장소 잠금",via=[(1120,450),(1120,300)],lx=1200,ly=378)
+d.edge("ex","l","po","r",G,"POST /internal/policies/bulk   청크 100 · 상한 500",dash=True,
+       a_pt=(1410,590),via=[(1260,590),(1260,470)],b_pt=(1000,470),lx=1272,ly=545,anchor="start")
+d.edge("vd","r","po","l",G,"POST /internal/policies/batch",dash=True,
+       via=[(480,700),(480,480)],b_pt=(640,480),lx=494,ly=592,anchor="start")
+d.edge("po","b","kf","t",O,"Outbox 로 발행  (수신하지 않음)",
+       a_pt=(900,505),via=[(900,660),(790,660)],b_pt=(790,770),lx=912,ly=600,anchor="start")
+d.edge("kf","r","nt","l",X,"policy.changed",dash=True,lx=1010,ly=802,anchor="start")
+d.edge("kf","l","vd","b",X,"policy.changed  캐시 비우기",dash=True,
+       via=[(180,810)],lx=370,ly=802,anchor="middle")
+d.note(40,880,"조건은 소스마다 한 벌씩 받아 한 벌로 합침 — OWNER > MANUAL > 공공 3종 · 공공끼리는 칸마다 채우고, 값이 갈리면 충돌로 남겨 배지를 붙임")
+d.note(40,902,"null 과 false 는 다른 값임 — null 은 정보 없음, false 는 요구하지 않음 · 관리자 정정은 20칸 전체 교체라 비워 둔 칸도 뜻을 가짐")
+d.note(40,924,"batch 가 내보내는 것(조건 · 충돌 여부 · 최상위 티어 · 근거)이 바뀔 때만 판을 올리고 policy.changed 를 냄 · 한 장소의 쓰기는 장소 잠금으로 한 줄로 섬")
+d.save("policy-service","policy-service 를 중심으로 · 직접 연결된 것만")
