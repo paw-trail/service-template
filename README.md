@@ -1385,17 +1385,18 @@ auto_review:
 
 ### 1-5. DB 를 사용하지 않는 서비스라면
 
-`verdict` · `congestion` · `route` 처럼 데이터베이스가 없는 서비스는
+`verdict` · `congestion` · `route` · `extract` 처럼 데이터베이스가 없는 서비스는
 **다섯 군데를 지워야 합니다.**
 
 > **한 곳만 고치면 컴파일이나 기동이 실패합니다.** 아래 순서대로 함께 처리합니다.
 
 ---
 
-**`extract` 는 이 절을 그대로 따르지 않습니다.**
+**`extract` 도 이 절을 그대로 따릅니다.**
 
-소유 DB 는 없지만 Spring Batch 가 실행 이력 테이블을 요구합니다.
-어디에 둘지 정해진 뒤에 판단합니다. [9장](#9-서비스별-형태-분류) 을 먼저 봅니다.
+Spring Batch 를 쓰지 않기로 정해 실행 이력 표가 필요 없습니다.
+어디까지 처리했는지는 `ingest` 가 가진 원문의 상태가 맡습니다.
+이벤트를 내지 않고 캐시도 쓰지 않아 Kafka · Redis 의존성도 함께 지웁니다.
 
 ---
 
@@ -1901,7 +1902,7 @@ app:
 | `server.port` | [4-5](#4-5-포트-배정) 의 배정표를 따릅니다 |
 | `spring.datasource.username` | `<서비스>_svc` 형식입니다. **`<서비스>_user` 가 아닙니다** |
 | `app.outbox.relay.enabled` | 이벤트를 발행하는 서비스만 `true` |
-| `app.auditor.system-name` | 배치가 아니면 적지 않습니다 |
+| `app.auditor.system-name` | 인증 없이 DB 에 쓰는 배치만 적습니다 |
 
 > 데이터베이스를 쓰지 않는 서비스는 `server.port` 만 적습니다.
 > [1-5](#1-5-db-를-사용하지-않는-서비스라면) 를 참고합니다.
@@ -1919,8 +1920,8 @@ app:
 
 **`app.auditor.system-name` 은 1계층에 `SYSTEM` 으로 있습니다.**
 
-배치가 아니면 적을 일이 없습니다. `ingest` 와 `extract` 만 각각
-`ingest-batch`, `extract-batch` 로 덮습니다.
+인증 없이 DB 에 쓰는 배치만 덮습니다. 지금은 `ingest` 하나이며 `ingest-batch` 로 덮습니다.
+`extract` 도 배치지만 자기 DB 가 없어 감사 컬럼에 남길 것이 없으므로 적지 않습니다.
 
 ---
 
@@ -4995,7 +4996,7 @@ copy .env.example .env
 | `spring.datasource.url` | config 2계층 | `jdbc:postgresql://${app.datasource.host}:5432/<서비스>_db` | 호스트는 3계층에서 참조 |
 | `spring.datasource.username` | config 2계층 | `<서비스>_svc` | 자기 DB 에만 접속. **`_user` 가 아닙니다** |
 | `app.datasource.host` | config 3계층 | 환경별 주소 | **DB 를 옮길 때 고치는 자리가 이 한 줄입니다** |
-| `app.auditor.system-name` | config 1계층 (`SYSTEM`) | 배치만 2계층에서 덮음 | 인증 없이 도는 배치가 감사 컬럼에 남길 이름 |
+| `app.auditor.system-name` | config 1계층 (`SYSTEM`) | DB 에 쓰는 배치만 2계층에서 덮음 (`ingest`) | 인증 없이 도는 배치가 감사 컬럼에 남길 이름 |
 | `app.outbox.relay.enabled` | config 2계층 | 발행 서비스의 한 인스턴스만 `true` | 미발행 이벤트를 회수하는 스케줄러 |
 | `app.rest-client` | config 1계층 | `connect-timeout 2s` · `read-timeout 5s` | 다른 서비스를 부를 때의 시간 제한. 서비스마다 다르면 2계층에서 덮음 |
 | `app.logging.loki.url` | config 3계층 | 환경별 주소 | logback 이 읽는 전송 주소 |
@@ -8107,7 +8108,7 @@ public record Reason(String axis, String detail, String source) { }
 | **DB 없음** | verdict | 무상태 순수 계산 |
 | | congestion | Redis 캐시만 씁니다 |
 | | route | 카카오맵 경로 계산만 합니다 |
-| **별도 판단** | extract | 소유 DB 없이 `/internal` 로만 접근합니다. 다만 **Spring Batch 가 실행 이력 테이블을 요구하므로** 이 부분만 따로 정합니다 |
+| | extract | `ingest` 의 원문을 `/internal` 로 받아 조건을 뽑고 `policy` 로 넘깁니다. 어디까지 했는지는 원문의 상태가 맡습니다 |
 | **다른 형태** | gateway · config · eureka | 도메인 서비스가 아니라 4계층 구조를 따르지 않습니다 |
 
 > 포트 배정은 [4-5](#4-5-포트-배정) 에, 배포 노드는
