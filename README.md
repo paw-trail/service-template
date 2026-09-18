@@ -728,7 +728,7 @@ rootProject.name = 'place-service'
 공통 모듈 버전을 최신으로 맞춥니다.
 
 ```properties
-commonVersion=0.0.13
+commonVersion=0.0.14
 ```
 
 > **템플릿에 적힌 값이 최신이 아닐 수 있습니다.**
@@ -1114,7 +1114,10 @@ serviceName: 'place'          →  ghcr.io/paw-trail/place 로 올림
 
 > `ingest` 와 `extract` 는 상시 기동하지 않으므로 이 표에 없습니다.
 
-배포가 실제로 어떻게 도는지는 [5-6](#5-6-배포는-아직-손으로-합니다) 에 있습니다.
+> ⚠ **지금 저장소들의 `Jenkinsfile` 은 전부 `app` 입니다.** 배포가 아직 없어
+> 이 값을 읽는 것이 없기 때문이며, **배포에 착수할 때 위 표대로 맞춥니다.**
+
+배포가 실제로 어떻게 도는지는 [5-7](#5-7-배포는-아직-손으로-합니다) 에 있습니다.
 
 <br><br>
 
@@ -1160,7 +1163,7 @@ docker compose up -d
 # IntelliJ 에서 PlaceApplication 실행
 ```
 
-환경변수는 [service-template README 4-4](링크) 를 따릅니다.
+환경변수는 [service-template README 4-4](https://github.com/paw-trail/service-template#4-4-환경변수) 를 따릅니다.
 ````
 
 > **지침을 남겨 두지 않습니다.** 서비스마다 같은 분량이 복사되면
@@ -1168,10 +1171,95 @@ docker compose up -d
 > 유지하고 서비스 README 는 **그 서비스만의 것**을 적습니다.
 
 > ⚠**위는 최소 형태이고 실제로는 더 길어졌습니다.**
-> `auth` · `user` · `ingest` · `place` 의 README 가 전부 수천 줄입니다.
+> `auth` · `user` · `ingest` · `place` · `pet` · `policy` 의 README 가 전부 수천 줄입니다.
 > 읽는 사람을 **"MSA 를 말만 들어 본 사람"** 으로 잡았기 때문이며,
 > 그 기준으로는 위 분량으로 레포를 파악할 수 없습니다.
 > 항목 구성은 그대로 쓰되 각 항목을 왜 그렇게 정했는지까지 적습니다.
+
+---
+
+**맨 위에는 그림 세 장을 둡니다.** 제목 바로 아래이며 본문보다 앞입니다.
+
+````markdown
+# place
+
+**한 줄 소개를 적습니다.**
+
+**① 전체 구조 — 층으로 본 것.** 위에서 아래로 요청이 내려갑니다.
+
+![전체 구조 (층)](https://raw.githubusercontent.com/paw-trail/service-template/main/docs/architecture-layers.svg)
+
+**② 전체 구조 — 서비스끼리 무엇을 주고받는지.**
+
+![전체 구조 (호출 관계)](https://raw.githubusercontent.com/paw-trail/service-template/main/docs/architecture.svg)
+
+**③ 이 레포를 중심으로.** 직접 연결된 것만 남긴 그림입니다.
+
+![place 를 중심으로](docs/focus-place-service.svg)
+
+<br><br>
+
+---
+
+## 본문 시작
+````
+
+| 그림 | 어디 것 | 왜 |
+|---|---|---|
+| ① · ② | **`service-template` 의 raw 주소** | 전체 구조는 서비스가 늘 때마다 바뀝니다. 사본을 두면 14곳이 서로 다른 시점을 보여 줍니다 |
+| ③ | **자기 저장소의 `docs/`** | 그 레포에만 해당하는 그림이라 함께 커밋합니다 |
+
+> **①②를 자기 저장소로 복사하지 않습니다.** 주소를 그대로 쓰면 원본을 고칠 때
+> 전 서비스의 README 가 함께 최신이 됩니다.
+
+---
+
+**③ 그림은 이 저장소의 스크립트로 만듭니다.**
+
+```
+① service-template/docs/focus.py 를 열고 맨 아래에 자기 서비스 블록을 추가합니다
+      d = D(너비, 높이)
+      d.me(...)        가운데 — 내 서비스
+      d.node(...)      주변 — 직접 연결된 것만.  아직 없는 서비스는 dash=True
+      d.edge(...)      연결선.  실제 경로와 이벤트 이름을 그대로 적습니다
+      d.note(...)      아래 각주 세 줄
+      d.save("place-service", "place-service 를 중심으로 · 직접 연결된 것만")
+
+② 스크립트를 돌립니다
+      cd docs && python3 focus.py
+      focus-place-service.svg 와 .png 가 만들어집니다
+
+③ service-template 에 커밋합니다        main 에 직접 커밋합니다
+
+④ 만들어진 두 파일을 자기 저장소의 docs/ 로 복사해 함께 커밋합니다
+```
+
+| | |
+|---|---|
+| 필요한 것 | `pillow` · `cairosvg` · Noto Sans CJK 글꼴 |
+| 왜 스크립트인가 | 손으로 그리면 서비스가 늘 때마다 14장을 다시 그립니다. 코드라 **고쳐서 다시 돌리면 끝입니다** |
+| 왜 두 벌인가 | `svg` 는 README 가 쓰고 `png` 는 문서와 발표 자료가 씁니다 |
+
+> **원본이 `service-template` 에 있어야 합니다.** 각 저장소가 자기 스크립트를 가지면
+> 색과 모양이 갈려 **14장이 서로 다른 그림이 됩니다.**
+
+---
+
+**장 구성은 이렇게 잡습니다.**
+
+```
+0. 이 서비스가 하는 일       도식 · 숫자로 본 것 · 읽는 순서 · 먼저 알아 두면 좋은 것
+1. 로컬에서 띄우기          무엇이 떠 있어야 하나 · 환경변수 · 확인
+2~   그 서비스만의 이야기      데이터의 생애 · 조립 · API · 데이터 · 코드 구조
+     왜 이렇게 만들었나       고른 것과 버린 것을 짝으로
+     막히기 쉬운 자리 · 아직 안 한 것 · 용어
+```
+
+> **「용어」 장을 둡니다.** 공통 용어는 이 문서 11장에 있으므로 **그 서비스에서만
+> 쓰는 말**만 적고 나머지는 이 문서를 가리킵니다.
+
+> **설명 없이 처음 나오는 말이 없어야 합니다.** 검색으로는 부족하고 장을 실제로
+> 읽어 확인합니다.
 
 <br><br>
 
@@ -1181,6 +1269,34 @@ docker compose up -d
 
 저장소에 함께 들어 있지만 **복제 후에 손대지 않는 파일들**입니다.
 무엇을 하는지만 알아 두면 됩니다.
+
+---
+
+**⛔`docs/` — 그림은 자기 것만 남깁니다**
+
+복제하면 **이 저장소의 그림과 스크립트가 그대로 딸려 옵니다.** 남의 서비스 그림이라
+지우고 시작합니다.
+
+```
+docs/
+├── architecture.py · .svg · .png              전체 구조 — service-template 만 가짐
+├── architecture-layers.py · .svg · .png       같음
+├── focus.py                                   그림 생성 스크립트 — service-template 만 가짐
+└── focus-service-template.svg · .png          남의 레포 그림
+```
+
+```bash
+rm -f docs/architecture*.py docs/architecture*.svg docs/architecture*.png
+rm -f docs/focus.py docs/focus-service-template.svg docs/focus-service-template.png
+```
+
+> **남는 것은 자기 그림 둘뿐입니다.** `docs/focus-<레포>.svg` 와 `.png` 이며
+> 만드는 방법은 [1-4-8](#1-4-8-readmemd) 에 있습니다.
+> 전체 구조 그림 두 장은 각 서비스가 사본을 갖지 않고 **이 저장소의 주소를 그대로 씁니다.**
+
+> ⚠ **실제로 안 지운 저장소가 있습니다.** `place` 에 11개, `user` 에 9개,
+> `ingest` 에 1개가 남아 있습니다. 남의 그림이 자기 저장소에 있으면
+> **그것이 최신인지 아무도 확인하지 않게 됩니다.**
 
 ---
 
@@ -1520,6 +1636,47 @@ JPA 와 무관한 자동 설정이라 계속 켜집니다.
 
 ---
 
+#### ⑥ ⛔Redis 를 안 쓴다면 그 두 줄도 지웁니다
+
+**DB 를 쓰는 서비스에도 해당합니다.** 템플릿은 `spring-boot-starter-data-redis` 를
+갖고 있는데, **쓰지 않아도 의존성만 있으면 자동 설정이 켜집니다.**
+
+```groovy
+    // ── 캐시 · 이벤트 ─────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'   // ← 안 쓰면 지웁니다
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
+```
+
+```groovy
+    // ── 테스트 ────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'   // ← 함께 지웁니다
+```
+
+**증상이 늦게, 그리고 엉뚱한 모양으로 나옵니다.**
+
+```
+의존성만 있음
+  → 상태 확인(/actuator/health)에 Redis 항목이 생김
+  → Redis 가 없는 환경에서 연결을 시도하다 DOWN
+  → compose 의 healthcheck 가 실패해 컨테이너가 unhealthy
+```
+
+| | |
+|---|---|
+| 로컬에서 안 드러남 | `infra` 프로파일로 Redis 를 늘 띄워 두기 때문입니다 |
+| 드러나는 자리 | **Redis 를 안 켠 채 컨테이너로 띄울 때** — 코드는 멀쩡한데 기동이 실패한 것처럼 보입니다 |
+
+> **실제로 겪었습니다.** `place` 의 첫 이미지가 이 이유로 unhealthy 였습니다.
+> 지금은 `place` · `pet` · `policy` 가 두 줄을 지웠고 **그 이유를 `build.gradle` 주석에
+> 남겨 두었습니다.** `auth` 와 `user` 는 실제로 Redis 를 씁니다.
+
+> **Kafka 도 같은 기준입니다.** 발행도 수신도 안 하면 `spring-boot-starter-kafka` 를
+> 지웁니다. 다만 지금까지 만든 서비스는 전부 한쪽이라도 하고 있어 해당 사례가 없습니다.
+
+<br><br>
+
+---
+
 ### 1-6. 빌드가 되는지 확인합니다
 
 **macOS · Git Bash**
@@ -1717,7 +1874,7 @@ git push
 # 장소 담당임
 #
 # 호스트는 3계층의 app.datasource.host 에서 오고 비밀번호는 1계층에 있음
-# 계정 10개가 같은 비밀번호를 쓰므로 여기에는 계정명만 둠
+# 서비스 계정이 모두 같은 비밀번호를 쓰므로 여기에는 계정명만 둠
 # =============================================================================
 
 server:
@@ -2257,6 +2414,10 @@ PLACE-SERVICE    UP (1) - place-service:8084
 ```
 
 > 안 보이면 서비스가 안 떴거나 `eureka.client.enabled: false` 입니다.
+
+> ⚠ **유레카 목록에 보인 직후에도 게이트웨이는 30초쯤 503 을 냅니다.**
+> 게이트웨이가 레지스트리를 주기적으로 받아 가기 때문이며, 그 사이의 503 은 정상입니다.
+> 기다렸다 다시 부르고, 그래도 503 이면 이름이 어긋난 것입니다.
 
 ---
 
@@ -2903,7 +3064,7 @@ Redis 와 Kafka 는 사람당 하나만 떠 있어야 하므로 서비스 저장
 | `pipeline` | ingest · extract | 수집·추출 배치를 돌릴 때만 | ⚠**extract 만 아직 compose 에 없음** |
 | `app` | 개발이 끝난 도메인 서비스 | 그 서비스를 안 고칠 때 | 선택 |
 
-> **`app` 에는 이미지가 올라간 서비스만 들어 있습니다.** 지금은 auth · user · place · pet 넷입니다.
+> **`app` 에는 이미지가 올라간 서비스만 들어 있습니다.** 지금은 auth · user · place · pet · policy 다섯입니다.
 > 자기 서비스를 여기 추가하는 방법은 [5-4](#5-4-infra-의-compose-에-등록하기) 에 있습니다.
 
 > **`edge` 는 해당 저장소가 완성된 뒤에 추가됩니다.**
@@ -3370,7 +3531,10 @@ gateway    8080 · 8180
 **둘 다 데이터 얘기지 서비스 얘기가 아닙니다.**
 
 `auth` · `user` · `pet` 은 공유할 데이터가 없습니다. 계정과 프로필은 각자 자기
-것으로 테스트합니다. 공용 인스턴스가 필요해지는 것은 **`ingest` 착수 시점**입니다.
+것으로 테스트합니다. 공용 인스턴스가 필요해지는 것은 **수집한 데이터를 함께 봐야 할 때**입니다.
+
+> `ingest` 가 이미 수집을 끝냈지만 아직 각자 로컬을 쓰고 있습니다.
+> 화면을 붙이면서 같은 장소 데이터를 함께 보게 될 때 옮깁니다.
 
 ---
 
@@ -3407,8 +3571,9 @@ gateway    8080 · 8180
 
 **로컬 데이터베이스를 띄우면 무엇이 만들어지나**
 
-`db` 프로파일이 PostgreSQL 을 띄우고, **초기화 스크립트가 데이터베이스 10개와
-계정 10개를 만듭니다.**
+`db` 프로파일이 PostgreSQL 을 띄우고, **초기화 스크립트가 데이터베이스 11개와
+계정 11개를 만듭니다.** 도메인 서비스 10개의 것과, 이 저장소를 그대로 띄워 확인할 때
+쓰는 `template_db` 입니다.
 
 **macOS · Windows 공통**
 
@@ -3840,17 +4005,17 @@ Invoke-RestMethod -Uri "http://localhost:8080/api/v1/auth/signup" -Method Post `
 
 ---
 
-**전체 스크립트는 `infra` 저장소에 둡니다.**
+**⛔반복 실행할 스크립트는 아직 없습니다.** 지금은 위 두 명령을 계정마다 손으로
+반복합니다. 서비스를 전부 띄운 뒤 게이트웨이를 거쳐 부르므로 이벤트도 정상적으로 나갑니다.
 
-위 둘을 계정마다 반복하는 것이 전부입니다.
+**만들 자리는 `infra` 저장소입니다.**
 
 ```
 infra/scripts/seed.sh      macOS
 infra/scripts/seed.ps1     Windows
 ```
 
-**서비스를 전부 띄운 뒤 한 번 실행합니다.** 게이트웨이를 거쳐 호출하므로
-이벤트도 정상적으로 나갑니다.
+`infra` README 10장의 「앞으로 할 일」에 그 자리가 있습니다.
 
 ---
 
@@ -3882,8 +4047,10 @@ docker compose exec postgres psql -U pawtrail -c "CREATE DATABASE auth_db OWNER 
 
 지운 뒤 서비스를 다시 띄우면 Flyway 가 스키마를 다시 만듭니다.
 
-> **이 스크립트는 아직 계정까지만 채웁니다.** `user` 와 `pet` 이 만들어졌으므로
-> 프로필과 반려동물 등록을 더할 자리인데 아직 하지 않았습니다.
+> **만들 때는 계정에서 끝내지 않습니다.** `user` 와 `pet` 이 있으므로 프로필 확인과
+> 반려동물 등록까지 넣습니다. 순서는 **인증 표시 주입 → 가입 → `GET /users/me` 가
+> 200 이 될 때까지 재시도 → 반려동물 등록 → 대표 지정** 입니다.
+> 프로필은 이벤트로 생기므로 **가입 직후에는 아직 없을 수 있어 재시도가 필요합니다.**
 
 <br><br>
 
@@ -3984,7 +4151,7 @@ IntelliJ 도 하나당 1GB 안팎을 씁니다. **여러 서비스를 동시에 
 ```
 
 > Jenkins 를 세우면 이 두 단계가 자동으로 돕니다.
-> 그때까지는 손으로 합니다. [5-6](#5-6-배포는-아직-손으로-합니다) 참고.
+> 그때까지는 손으로 합니다. [5-7](#5-7-배포는-아직-손으로-합니다) 참고.
 
 ---
 
@@ -4272,7 +4439,7 @@ GitHub 조직 → Packages → 해당 패키지 → Package settings
 
 `paw-trail/infra` 의 `docker-compose.yml` 에 **`app` 프로파일로 추가합니다.**
 
-> **지금은 auth · user · place · pet 넷이 들어 있습니다.**
+> **지금은 auth · user · place · pet · policy 다섯이 들어 있습니다.**
 > 이미지가 올라간 서비스부터 하나씩 추가합니다.
 
 ---
@@ -4349,6 +4516,21 @@ Dockerfile 에 `-XX:MaxRAMPercentage=70` 이 있어 **이 값의 70% 까지 힙�
 상한을 안 걸면 JVM 이 호스트 메모리 기준으로 힙을 늘리다 죽습니다.
 [4-10](#4-10-메모리-주의) 참고.
 
+---
+
+**⛔같은 커밋에서 `infra` README 도 함께 고칩니다.**
+
+compose 파일만 고치면 **그 저장소의 문서가 곧바로 낡습니다.** 세 자리입니다.
+
+| 어디 | 무엇 |
+|---|---|
+| 맨 위 도식 | `app` 칸에 서비스와 포트를 한 줄 더함 |
+| 1-1 프로파일 표 | `app` 행의 서비스 목록과 포트 · 메모리 |
+| 10장 「앞으로 할 일」 | *"도메인 서비스가 완성될 때마다"* 줄의 목록 |
+
+> **Prometheus 타깃도 같은 커밋에 넣습니다.** [2-6](#2-6-prometheus-타깃-추가) 에서
+> 이미 했다면 그대로 두고, 안 했으면 여기서 함께 합니다.
+
 <br><br>
 
 ---
@@ -4389,6 +4571,28 @@ docker compose ps
 ```
 
 `healthy` 가 될 때까지 40초쯤 걸립니다.
+
+---
+
+**⛔서비스 이름을 하나만 적으면 그것만 뜹니다.**
+
+```bash
+docker compose up -d place-service      ⛔ place 하나만 뜸
+docker compose up -d                    ✅ .env 의 프로파일 조합이 전부 뜸
+```
+
+이름을 지정하면 **`depends_on` 이 가리키는 `config-server` 와 `postgres` 는 함께 뜨지만
+`eureka-server` 와 `gateway-server` 는 안 뜹니다.** 그 둘은 의존 관계에 없기 때문입니다.
+
+```
+증상   컨테이너는 healthy
+      로그에는 유레카 등록 실패가 쌓임
+      게이트웨이로 부르면 연결 자체가 안 됨
+```
+
+> **`/actuator/health` 는 그래도 `UP` 입니다.** 유레카 항목이 `UNKNOWN` 이면
+> 전체 판정에서 빠지기 때문이며, **`docker compose ps` 로는 멀쩡해 보입니다.**
+> 한 서비스만 다시 띄우고 싶을 때는 **`restart` 나 `up -d` 를 옵션 없이** 씁니다.
 
 ---
 
@@ -4450,7 +4654,89 @@ docker compose up -d
 
 ---
 
-### 5-6. 배포는 아직 손으로 합니다
+### 5-6. 첫 배포 지점과 버전 태그
+
+**기능이 다 들어가면 그 지점을 버전으로 찍습니다.** 지금까지 만든 서비스가 전부
+같은 순서를 밟았습니다.
+
+```
+① develop 에서 문서를 끝냄            README · 그림 · infra 등록
+        │
+        ▼
+② 컨테이너로 한 번 확인               5-5.  이미지를 굽기 전에 반드시
+        │
+        ▼
+③ 릴리스 PR 을 엶                     base main  ←  compare develop
+        │                             제목 [CHORE] {서비스} 서비스 첫 배포 지점
+        ▼
+④ 머지한 뒤 태그를 만듦                GitHub Releases → Draft a new release
+        │                             태그 v0.1.0 · 대상 브랜치 main
+        ▼
+⑤ ⛔main 을 체크아웃한 상태에서 이미지를 굽습니다
+        │
+        ▼
+⑥ 버전 태그와 latest 를 함께 밀고 Packages 를 Public 으로
+```
+
+---
+
+**⑤가 이 절에서 가장 놓치기 쉬운 자리입니다.**
+
+```
+develop 에서 구우면
+  jar 내용은 같을 수 있으나 이미지의 빌드 증명에 develop 커밋이 박힘
+        │
+        └──▶ 태그 v0.1.0 이 가리키는 커밋과 이미지가 말하는 커밋이 어긋남
+              나중에 "이 이미지가 어느 커밋인가" 를 되짚을 수 없음
+```
+
+**macOS · Windows 공통**
+
+```bash
+git checkout main
+git pull
+git log --oneline -1        # HEAD -> main, tag: v0.1.0 이 보여야 합니다
+```
+
+---
+
+**태그와 함께 밉니다.**
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/paw-trail/place-service:v0.1.0 \
+  -t ghcr.io/paw-trail/place-service:latest --push .
+```
+
+| 태그 | 누가 씁니까 |
+|---|---|
+| `v0.1.0` | 어느 판인지 되짚을 때. **덮어쓰지 않습니다** |
+| `latest` | `infra` 의 compose 가 이 태그를 씁니다 |
+
+> **둘을 한 번에 미는 이유입니다.** 따로 구우면 같은 버전인데 내용이 다른 이미지가
+> 두 개 생길 수 있습니다.
+
+> 아키텍처 확인과 Public 전환은 [5-3](#5-3-이미지-빌드와-push) 에 있습니다.
+> **처음 올린 패키지는 비공개라 그 단계를 빠뜨리면 팀원이 받지 못합니다.**
+
+---
+
+**다음 판부터는 뒷자리만 올립니다.**
+
+```
+v0.1.0    첫 배포 지점
+v0.1.1    버그 수정
+v0.2.0    기능이 늘어남
+```
+
+> **릴리스 PR 의 본문에는 그 판에 들어간 이슈를 적습니다.** 이슈 번호만 나열해도
+> 되고, 커밋이 많으면 묶어서 적습니다.
+
+<br><br>
+
+---
+
+### 5-7. 배포는 아직 손으로 합니다
 
 > **Jenkins 를 아직 세우지 않았습니다.** 이 절은 배포 서버를 세울 때 채워집니다.
 > 지금은 [5-3](#5-3-이미지-빌드와-push) 처럼 손으로 굽고 올립니다.
@@ -4487,6 +4773,9 @@ springServicePipeline(
 한쪽만 터지고 다른 쪽은 노는 구조가 되기 때문**입니다.
 
 > `ingest` 와 `extract` 는 상시 기동하지 않으므로 이 표에 없습니다.
+
+> ⚠ **실물은 아직 전부 `app` 입니다.** 저장소를 만들 때 `serviceName` 만 고치고
+> 노드는 템플릿 기본값으로 두었습니다. **배포에 착수할 때 이 표대로 한 번에 맞춥니다.**
 
 ---
 
@@ -4697,7 +4986,7 @@ copy .env.example .env
 
 | 키 | 두는 곳 | 값 | 무엇을 하나 |
 |---|---|---|---|
-| `commonVersion` | `gradle.properties` | 예: `0.0.13` | 공통 모듈 버전 |
+| `commonVersion` | `gradle.properties` | 예: `0.0.14` | 공통 모듈 버전 |
 | `GPR_USER` · `GPR_TOKEN` | OS 환경변수 | GitHub 계정·토큰 | 공통 모듈 내려받기 |
 | `CONFIG_HOST` | 환경변수 | 기본값 `localhost` | 설정 서버 주소. 컨테이너와 AWS 에서만 지정 |
 | `DB_HOST` | 환경변수 | `localhost` | config 3계층의 `app.datasource.host` 가 참조 |
@@ -4924,7 +5213,7 @@ dependencies {
 버전은 `gradle.properties` 에 한 줄로 둡니다.
 
 ```properties
-commonVersion=0.0.13
+commonVersion=0.0.14
 ```
 
 > 버전을 `build.gradle` 에 직접 적지 않은 이유는 **고칠 자리를 파일 하나로
@@ -5151,7 +5440,7 @@ com.pawtrail.common
 │
 ├── exception/
 │   ├── ErrorCode                        에러 코드가 가져야 할 모양(인터페이스)
-│   ├── CommonErrorCode                  모든 서비스가 같은 뜻으로 쓰는 에러 6개
+│   ├── CommonErrorCode                  모든 서비스가 같은 뜻으로 쓰는 에러 7개
 │   ├── CustomException                  의도적으로 던지는 모든 예외
 │   └── handler/GlobalExceptionHandler   예외를 응답 형식으로 바꿈
 │
@@ -5188,6 +5477,7 @@ com.pawtrail.common
 
 src/main/resources/
 ├── META-INF/spring/AutoConfiguration.imports    config 7개를 자동 설정으로 등록
+├── logback-loki-appender.xml                    Loki 전송 appender — 서비스가 include 함
 └── db/migration/common/
     ├── V1__outbox.sql                           outbox 테이블
     └── V2__inbox.sql                            processed_event 테이블
@@ -5249,6 +5539,7 @@ VALIDATION_FAILED(400)
 AUTHENTICATION_FAILED(401)
 ACCESS_DENIED(403)
 RESOURCE_NOT_FOUND(404)
+METHOD_NOT_ALLOWED(405)
 INTERNAL_ERROR(500)
 EXTERNAL_API_ERROR(502)
 ```
@@ -5349,7 +5640,7 @@ Place place = placeRepository.findById(id)
 
 ---
 
-**`GlobalExceptionHandler` 의 핸들러 5개입니다.**
+**`GlobalExceptionHandler` 의 핸들러 10개입니다.**
 
 | | 잡는 것 | 응답 |
 |---|---|---|
@@ -5357,10 +5648,19 @@ Place place = placeRepository.findById(id)
 | 2 | `MethodArgumentNotValidException` (`@Valid` 실패) | 400 + 필드별 오류 배열 |
 | 3 | `MethodArgumentTypeMismatchException` (`/places/abc`) | 400 |
 | 4 | `NoResourceFoundException` (컨트롤러가 없는 주소) | 404 |
-| 5 | `Exception` | 500 |
+| 5 | `HttpMessageNotReadableException` (본문 JSON 이 깨짐) | 400 |
+| 6 | `HttpRequestMethodNotSupportedException` (`POST` 자리에 `GET`) | 405 |
+| 7 | `MissingServletRequestParameterException` (필수 쿼리 누락) | 400 |
+| 8 | `ConstraintViolationException` (`@Validated` 단일 파라미터) | 400 |
+| 9 | `HandlerMethodValidationException` | 400 |
+| 10 | `Exception` | 500 |
 
 > 4번이 없으면 **오타 난 URL 하나가 500 으로 나가고** 스택트레이스가 쌓여
 > 로그에서 진짜 오류를 못 찾습니다.
+>
+> **5~9번은 공통 모듈 `0.0.14` 에서 늘어난 것입니다.** 그전에는 이 다섯이 전부
+> 마지막 `Exception` 으로 떨어져 **클라이언트 잘못인데 500 이 나갔습니다.**
+> `commonVersion` 이 `0.0.13` 이하인 서비스는 아직 그 상태입니다.
 
 **401·403 은 여기로 오지 않습니다.** 시큐리티 필터가 `DispatcherServlet` 앞에
 있어 `CustomSecurityExceptionHandler` 가 처리합니다.
@@ -6128,6 +6428,8 @@ POST  /api/v1/admin/{리소스}/outbox/{id}/retry   한 건 재발행
 |---|---|
 | auth | `accounts` |
 | place | `places` |
+| pet | `pets` |
+| policy | `policies` |
 | report | `reports` |
 
 > **두 번째 마디가 어느 서비스인지를 정한다**는 라우팅 규칙을 그대로 따르므로
@@ -6451,6 +6753,25 @@ com.pawtrail.place
 > 각 폴더의 `.gitkeep` 에도 같은 설명이 들어 있습니다.
 > **파일을 만들기 전에 그 폴더의 `.gitkeep` 을 열어 봐도 됩니다.**
 
+---
+
+**위 목록에 없지만 필요해지면 만드는 폴더가 넷 있습니다.**
+
+| 폴더 | 언제 | 지금 쓰는 곳 |
+|---|---|---|
+| `infrastructure/security/` | 자기 `SecurityFilterChain` 을 정의할 때 | `auth` — 로그인 경로를 열어야 해서 |
+| `infrastructure/provider/internal/dto/` | 우리 서비스가 **돌려주는 형태**를 받아 적을 때 | `user` — place · verdict · review 응답 |
+| `infrastructure/provider/<수단>/` | 호출이 `internal` · `external` 로 안 갈릴 때 | `ingest` — `file`(CSV 읽기) · `convert`(좌표 변환) |
+| `domain/support/` | 엔티티도 규칙도 아닌 **도메인 도구**가 생길 때 | `policy` — 조건을 정규화해 지문을 만드는 도구 |
+
+> **먼저 만들어 두지 않습니다.** 빈 폴더가 늘면 어디에 무엇을 두는지가 흐려집니다.
+> 위 넷은 **그 일이 실제로 생겼을 때** 만든 것들입니다.
+
+> ⛔**`infrastructure/provider/external/dto` 와 `internal/dto` 는 쓰임이 다릅니다.**
+> 바깥은 *그쪽이 정한 형태*를 받아 적는 자리이고, 우리 서비스는 *공통 응답 봉투 안의
+> 형태*를 받아 적는 자리입니다. 둘 다 도메인으로 올릴 때는 `domain/provider/dto` 의
+> 모양으로 바꿔서 넘깁니다.
+
 <br><br>
 
 ---
@@ -6604,17 +6925,32 @@ VerificationCodeGenerator      여섯 자리 난수를 만듦
 엔티티의 필드로 쓰이거나 엔티티와 무관한 분류로 쓰입니다.
 **전 서비스가 쓰는 것만 공통 모듈에 둡니다.**
 
-> **저장되거나 밖으로 나가는 값은 `name()` 을 그대로 쓰지 않습니다.**
-> 상수 이름을 바꾸는 순간 이미 저장된 값과 어긋나는데 **그 연결이 코드에
-> 드러나지 않습니다.** 따로 필드를 두고 그 값을 씁니다.
+**저장되는 enum 은 `@Enumerated(EnumType.STRING)` 으로 이름을 그대로 담습니다.**
 
 ```java
-public enum PlaceStatus {
-    OPEN("open"), CLOSED("closed");
-
-    private final String value;      // 저장되는 값
-}
+@Enumerated(EnumType.STRING)
+@Column(nullable = false, length = 20)
+private PlaceStatus status;         // DB 에 'OPEN' · 'CLOSED' 로 들어감
 ```
+
+| | 쓰나 | 왜 |
+|---|---|---|
+| `EnumType.STRING` | ✅ | 값이 곧 상수 이름이라 DB 를 열어 봐도 뜻이 읽힙니다 |
+| `EnumType.ORDINAL` | ⛔ | **상수 순서를 바꾸면 이미 저장된 값의 뜻이 통째로 달라집니다** |
+
+> ⛔ **상수 이름이 곧 저장값입니다.** 이름을 바꾸면 기존 행과 어긋나는데
+> **컴파일러도 기동 검증도 잡아 주지 않습니다.** 이름은 바꾸지 않습니다.
+> 바꿔야 한다면 마이그레이션으로 기존 값을 함께 옮깁니다.
+
+> **화면에 보여 줄 이름이 필요하면 필드를 따로 둡니다.** 저장값이 아니라 표시용입니다.
+>
+> ```java
+> public enum SourceType {
+>     PET_TOUR("반려동물 동반 여행지"), GOCAMPING("고캠핑");
+>
+>     private final String label;      // 표시용 — 저장되는 값은 상수 이름입니다
+> }
+> ```
 
 ---
 
@@ -7397,13 +7733,16 @@ petEventProducer.profileUpdated(pet, changed);
 **구조는 같습니다. 약속은 `domain`, 구현은 `infrastructure` 입니다.**
 
 ```
-domain/provider/PolicyProvider.java                    약속
-domain/provider/dto/PolicyData.java                    받아올 데이터의 모양
+domain/provider/PetProvider.java                       약속
+domain/provider/dto/PetData.java                       받아올 데이터의 모양
 
-infrastructure/provider/internal/PolicyProviderImpl.java     우리 서비스를 부를 때
+infrastructure/provider/internal/PetProviderImpl.java        우리 서비스를 부를 때
 infrastructure/provider/external/KakaoMapProviderImpl.java   바깥 시스템을 부를 때
 infrastructure/provider/external/dto/KakaoRouteResponse.java 그쪽이 보내는 형태
 ```
+
+> **아래 예시는 `user` 가 `pet` 을 부르는 실물입니다.** 대표 반려동물을 지정하기 전에
+> 그것이 그 사람의 것인지 확인하는 자리입니다.
 
 ---
 
@@ -7426,15 +7765,15 @@ infrastructure/provider/external/dto/KakaoRouteResponse.java 그쪽이 보내는
 **약속은 `domain` 에 하나만 둡니다.**
 
 ```java
-// domain/provider/PolicyProvider.java
-package com.pawtrail.verdict.domain.provider;
+// domain/provider/PetProvider.java
+package com.pawtrail.user.domain.provider;
 
-import com.pawtrail.verdict.domain.provider.dto.PolicyData;
+import com.pawtrail.user.domain.provider.dto.PetData;
 import java.util.UUID;
 
-public interface PolicyProvider {
+public interface PetProvider {
 
-    PolicyData findByPlaceId(UUID placeId);
+    PetData findById(UUID petId);
 }
 ```
 
@@ -7446,12 +7785,12 @@ public interface PolicyProvider {
 **우리 서비스를 부르는 구현입니다.**
 
 ```java
-// infrastructure/provider/internal/PolicyProviderImpl.java
-package com.pawtrail.verdict.infrastructure.provider.internal;
+// infrastructure/provider/internal/PetProviderImpl.java
+package com.pawtrail.user.infrastructure.provider.internal;
 
 import com.pawtrail.common.response.CommonApiResponse;
-import com.pawtrail.verdict.domain.provider.PolicyProvider;
-import com.pawtrail.verdict.domain.provider.dto.PolicyData;
+import com.pawtrail.user.domain.provider.PetProvider;
+import com.pawtrail.user.domain.provider.dto.PetData;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -7459,22 +7798,22 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
-public class PolicyProviderImpl implements PolicyProvider {
+public class PetProviderImpl implements PetProvider {
 
     private final RestClient restClient;
 
-    public PolicyProviderImpl(
+    public PetProviderImpl(
             @Qualifier("internalRestClientBuilder") RestClient.Builder builder) {
 
         // 부를 서비스의 이름을 여기서 한 번만 박아 둠
-        this.restClient = builder.baseUrl("lb://policy-service").build();
+        this.restClient = builder.baseUrl("lb://pet-service").build();
     }
 
     @Override
-    public PolicyData findByPlaceId(UUID placeId) {
+    public PetData findById(UUID petId) {
         // 응답이 CommonApiResponse 로 감싸여 오므로 벗겨서 돌려줌
-        CommonApiResponse<PolicyData> response = restClient.get()
-                .uri("/internal/policies/{placeId}", placeId)
+        CommonApiResponse<PetData> response = restClient.get()
+                .uri("/internal/pets/{petId}", petId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 
@@ -7482,6 +7821,11 @@ public class PolicyProviderImpl implements PolicyProvider {
     }
 }
 ```
+
+> ⛔ **부르는 경로는 그 서비스의 README 와 API 명세에서 확인합니다.**
+> 있을 법한 모양으로 짐작해 적으면 **호출하는 순간에 404 가 나고, 그때는 이미
+> 조립 코드까지 그 형태로 짜여 있습니다.** `/internal` 은 게이트웨이를 안 거쳐
+> 브라우저로 먼저 찔러 볼 수도 없습니다.
 
 ---
 
@@ -7493,7 +7837,7 @@ public class PolicyProviderImpl implements PolicyProvider {
 | | `internalRestClientBuilder` | `externalRestClientBuilder` |
 |---|---|---|
 | 부르는 곳 | 우리 서비스 | 카카오맵 · 기상청 · 관광공사 |
-| 주소 | `lb://policy-service` | `https://apis.data.go.kr` |
+| 주소 | `lb://pet-service` | `https://apis.data.go.kr` |
 | 주소를 푸는 것 | 유레카 | 설정에 박힌 고정 주소 |
 | 인증 헤더 | `X-User-Id` · `X-User-Role` 을 실음 | **싣지 않음** |
 
@@ -7767,7 +8111,7 @@ public record Reason(String axis, String detail, String source) { }
 | **다른 형태** | gateway · config · eureka | 도메인 서비스가 아니라 4계층 구조를 따르지 않습니다 |
 
 > 포트 배정은 [4-5](#4-5-포트-배정) 에, 배포 노드는
-> [5-6](#5-6-배포는-아직-손으로-합니다) 에 있습니다.
+> [5-7](#5-7-배포는-아직-손으로-합니다) 에 있습니다.
 
 ---
 
