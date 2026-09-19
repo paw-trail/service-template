@@ -229,7 +229,7 @@ d.save("user-service","user-service 를 중심으로 · 직접 연결된 것만"
 # ── place-service
 d=D(1860,960)
 d.me("pc",820,450,360,110,"dom","place-service  :8084",
-     "여러 소스가 가리키는 같은 곳을 하나로|API 11개 · 서비스 8개")
+     "여러 소스가 가리키는 같은 곳을 하나로|API 12개 · 서비스 8개")
 d.node("gw",180,450,240,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
 d.node("cf",820,120,300,80,"plat","config-server","포트 · DB · 카카오 키")
 d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
@@ -240,11 +240,11 @@ d.node("ig",1560,620,300,110,"domn","ingest-service",
        "적재를 넘겨 받음 (bulk)|원문을 내어 줌 (documents)|평소에는 안 떠 있음")
 d.node("us",180,700,240,100,"domn","user-service","즐겨찾기 · 방문 · 일정이|장소 이름과 사진을 물어봄")
 d.node("kf",700,830,300,80,"data","Kafka","place.updated 발행|받는 것은 없음")
-d.node("se",1300,830,300,80,"fut","search-service","place.updated 를 받아 색인|아직 없음",dash=True)
+d.node("se",1300,830,300,80,"fut","search-service","place.updated 를 받으면 다시 읽어 색인|GET /internal/places/indexing · 아직 없음",dash=True)
 d.edge("gw","r","pc","l",B,"공개 2 · 관리자 7",lx=480,ly=432)
 d.edge("cf","b","pc","t",V,"기동 시 설정")
 d.edge("pc","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
-d.edge("pc","r","pg","l",O,"JPA · PostGIS · Flyway V20~25",
+d.edge("pc","r","pg","l",O,"JPA · PostGIS · Flyway V20~27",
        via=[(1120,450),(1120,300)],lx=1200,ly=378)
 d.edge("ig","l","pc","r",G,"POST /internal/places/bulk   담아 둔 것과 바로 보낸 것 둘 다",
        a_pt=(1410,590),via=[(1260,590),(1260,470)],b_pt=(1000,470),lx=1270,ly=545,anchor="start")
