@@ -81,8 +81,7 @@ poly([(1320,y("verdict",16)),(1390,y("verdict",16)),(1390,y("pet",16)),(1550,y("
 poly([(1210,y("ingest",-32)),(1210,505),(1460,505),(1460,y("place",16)),(1550,y("place",16))],G,"bulk  ↔  documents",lx=1350,ly=499,both=True)
 poly([(870,y("extract")),(980,y("extract")),(980,y("ingest",16)),(1100,y("ingest",16))],G,"/internal/raw",lx=1040,ly=y("ingest",10))
 poly([(870,y("extract",16)),(1020,y("extract",16)),(1020,805),(1470,805),(1470,y("policy",16)),(1550,y("policy",16))],G,"/internal/policies/bulk",lx=1245,ly=799)
-poly([(870,y("search",-16)),(1060,y("search",-16)),(1060,380),(1600,380),(1600,398)],G,"/internal/places  (재색인)",lx=1330,ly=374)
-poly([(870,y("search",16)),(1040,y("search",16)),(1040,820),(1500,820),(1500,y("congestion")),(1550,y("congestion"))],G,"/internal/congestion/batch",lx=1270,ly=836)
+poly([(870,y("search",-16)),(1060,y("search",-16)),(1060,380),(1600,380),(1600,398)],G,"/internal/places/indexing  (색인)",lx=1330,ly=374)
 poly([(870,y("review",16)),(1000,y("review",16)),(1000,520),(1400,520),(1400,y("pet",-16)),(1550,y("pet",-16))],G,"/internal/pets  (스냅샷)",lx=1150,ly=514)
 poly([(870,y("notification",-16)),(910,y("notification",-16)),(910,360),(1620,360),(1620,398)],G,"/internal/places",lx=1330,ly=354)
 

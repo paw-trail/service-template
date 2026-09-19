@@ -240,7 +240,7 @@ d.node("ig",1560,620,300,110,"domn","ingest-service",
        "적재를 넘겨 받음 (bulk)|원문을 내어 줌 (documents)|평소에는 안 떠 있음")
 d.node("us",180,700,240,100,"domn","user-service","즐겨찾기 · 방문 · 일정이|장소 이름과 사진을 물어봄")
 d.node("kf",700,830,300,80,"data","Kafka","place.updated 발행|받는 것은 없음")
-d.node("se",1300,830,300,80,"fut","search-service","place.updated 를 받으면 다시 읽어 색인|GET /internal/places/indexing · 아직 없음",dash=True)
+d.node("se",1300,830,300,80,"domn","search-service","place.updated 를 받으면 다시 읽어 색인|GET /internal/places/indexing")
 d.edge("gw","r","pc","l",B,"공개 2 · 관리자 7",lx=480,ly=432)
 d.edge("cf","b","pc","t",V,"기동 시 설정")
 d.edge("pc","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
@@ -254,7 +254,7 @@ d.edge("us","r","pc","l",G,"GET /internal/places?ids=",
        via=[(480,700),(480,480)],b_pt=(640,480),lx=310,ly=660,anchor="start")
 d.edge("pc","b","kf","t",O,"Outbox 로 발행  (수신하지 않음)",
        a_pt=(900,505),via=[(900,660),(780,660)],b_pt=(780,790),lx=910,ly=600,anchor="start")
-d.edge("kf","r","se","l",X,"place.updated",dash=True,lx=1000,ly=822,anchor="start")
+d.edge("kf","r","se","l",O,"place.updated",lx=1000,ly=822,anchor="start")
 d.edge("pc","l","ka","r",X,"지오코딩 · 3초",dash=True,
        via=[(480,450),(480,150)],lx=490,ly=300,anchor="start")
 d.note(40,880,"소스가 넷이라 같은 곳이 네 번 들어옴 — 주소가 같고 이름이 같으면 합치고, 아니면 100m 안에서 이름이 같을 때만 합침 · 관리자가 고친 장소는 잠겨 수집이 건드리지 않고 대기 목록에 쌓임")
@@ -410,7 +410,7 @@ d.me("vd",820,450,380,110,"dom","verdict-service  :8086",
      "장소마다 · 반려동물마다 동반 가능 여부를 판정|API 2개  (공개 1 · internal 1) · DB · 캐시 없음")
 d.node("gw",180,300,250,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
 d.node("us",180,540,250,100,"domn","user-service","즐겨찾기 · 최근 · 일정 · 방문 카드|판정 배지와 준비물")
-d.node("sr",180,760,250,80,"fut","search-service","검색 카드|아직 없음",dash=True)
+d.node("sr",180,760,250,80,"domn","search-service","검색 카드 · 탐색 카운트|판정 필터면 후보 전부")
 d.node("cf",820,120,320,80,"plat","config-server","포트 한 줄")
 d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
 d.node("pt",1560,380,300,110,"domn","pet-service","반려동물을 한 번에 100마리|체중 · 크기 · 맹견 · 이동장 · 접종|남의 것은 조용히 뺌")
@@ -420,7 +420,7 @@ d.edge("gw","r","vd","l",B,"GET /api/v1/places/{placeId}/verdict",
        via=[(470,300),(470,430)],b_pt=(630,430),lx=318,ly=288,anchor="start")
 d.edge("us","r","vd","l",G,"POST /internal/verdicts/batch",
        via=[(560,540),(560,470)],b_pt=(630,470),lx=318,ly=528,anchor="start")
-d.edge("sr","r","vd","l",X,"같은 목록 판정",dash=True,
+d.edge("sr","r","vd","l",G,"POST /internal/verdicts/batch  500곳씩",
        via=[(600,760),(600,490)],b_pt=(630,490),lx=318,ly=748,anchor="start")
 d.edge("cf","b","vd","t",V,"기동 시 설정")
 d.edge("vd","r","eu","l",V,"등록",via=[(1130,430),(1130,120)],a_pt=(1010,430),lx=1142,ly=205,anchor="start")
@@ -433,3 +433,34 @@ d.note(40,880,"반려견마다 네 단계로 판정 — 불가 > 확인 필요 >
 d.note(40,902,"pet → policy 를 차례로 한 번씩 부름 · 사용자 헤더 둘이 pet 호출에 그대로 따라감 · 헤더가 없으면 401 · 둘 중 하나라도 못 부르면 502")
 d.note(40,924,"DB · 캐시 · 이벤트 없음 — 부를 때마다 새로 판정 · 캐시와 이벤트 소비는 부하를 잰 뒤 · 장소 정보는 화면이 가져 place 를 부르지 않음")
 d.save("verdict-service","verdict-service 를 중심으로 · 직접 연결된 것만")
+
+
+# ── search-service
+d=D(1860,960)
+d.me("se",820,450,380,110,"dom","search-service  :8087",
+     "place 를 옮겨 담은 색인으로 찾음|API 7개  (공개 6 · 관리자 1) · 판정은 verdict 에 물음")
+d.node("gw",180,300,250,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
+d.node("kf",180,540,250,90,"data","Kafka","place.updated 를 받음|묶어서 500건씩 · earliest")
+d.node("vd",180,770,250,90,"domn","verdict-service","카드마다 반려동물별 판정|충돌 · 준비물 · 한 줄 근거")
+d.node("cf",820,120,320,80,"plat","config-server","재색인 시각 · 잠금 만료")
+d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
+d.node("pg",1560,290,300,100,"data","PostgreSQL  search_db","search_index 한 표 · 24칸|이름 트라이그램 · 좌표 · 소개문 인덱스")
+d.node("rd",1560,460,300,90,"data","Redis","조회수 — 전국 · 시도 열쇠|재색인 잠금  (만료 30분)")
+d.node("pl",1560,630,300,90,"domn","place-service","색인용 조회|ids 100 · 이어받기 500")
+d.node("rv",1560,800,300,90,"fut","review-service","평점 · 후기 수를 100곳씩|아직 없음 — 그동안 평점은 비어 있음",dash=True)
+d.edge("gw","r","se","l",B,"검색 · 카운트 · 자동완성 · 인기 · 지역 · 관리자 재색인",
+       via=[(470,300),(470,420)],b_pt=(630,420),lx=318,ly=288,anchor="start")
+d.edge("kf","r","se","l",O,"place.updated",
+       via=[(520,540),(520,460)],b_pt=(630,460),lx=318,ly=528,anchor="start")
+d.edge("se","l","vd","r",G,"POST /internal/verdicts/batch  500곳씩",
+       a_pt=(630,490),via=[(580,490),(580,770)],lx=318,ly=758,anchor="start")
+d.edge("cf","b","se","t",V,"기동 시 설정")
+d.edge("se","r","eu","l",V,"등록",via=[(1110,410),(1110,120)],a_pt=(1010,410),lx=1122,ly=205,anchor="start")
+d.edge("se","r","pg","l",O,"JDBC · Flyway V20",via=[(1150,435),(1150,290)],a_pt=(1010,435),lx=1162,ly=355,anchor="start")
+d.edge("se","r","rd","l",O,"ZINCRBY · SET NX",a_pt=(1010,460),b_pt=(1410,460),lx=1250,ly=450)
+d.edge("se","r","pl","l",G,"GET /internal/places/indexing",via=[(1230,485),(1230,630)],a_pt=(1010,485),lx=1242,ly=565,anchor="start")
+d.edge("se","r","rv","l",X,"GET /internal/reviews/stats",dash=True,via=[(1190,500),(1190,800)],a_pt=(1010,500),lx=1242,ly=745,anchor="start")
+d.note(40,880,"색인에는 동반 조건이 없음 — 카드마다 verdict 에 물어 붙임 · 판정 필터 · 탐색 카운트는 후보 전부를 500곳씩 판정 (전국 3.3초 · 서울 0.56초)")
+d.note(40,902,"place.updated 를 받거나 매일 04:00 재색인 때 place 에서 다시 읽어 덮어씀 — place 수정 시각이 더 새 것만 쓰므로 같은 이벤트가 두 번 와도 결과가 같음")
+d.note(40,924,"이름 차례는 ko-x-icu — DB 기본 정렬이 한글을 글자 수로 세움 · 조회수는 Redis 에만 · 두 대로 떠도 재색인은 잠금으로 한 번만 돎")
+d.save("search-service","search-service 를 중심으로 · 직접 연결된 것만")

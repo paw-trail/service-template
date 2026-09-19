@@ -85,7 +85,6 @@
 <polyline points="870,880 980,880 980,596 1100,596" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="870,896 1020,896 1020,805 1470,805 1470,746 1550,746" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="870,714 1060,714 1060,380 1600,380 1600,398" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
-<polyline points="870,746 1040,746 1040,820 1500,820 1500,880 1550,880" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="870,446 1000,446 1000,520 1400,520 1400,564 1550,564" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="870,564 910,564 910,360 1620,360 1620,398" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="200,111 200,218" fill="none" stroke="#3B82F6" stroke-width="2.4" marker-end="url(#ah-3B82F6)"/>
@@ -156,10 +155,8 @@
 <text x="1040" y="590" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/raw</text>
 <rect x="1172" y="787" width="147" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
 <text x="1245" y="799" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/policies/bulk</text>
-<rect x="1251" y="362" width="157" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
-<text x="1330" y="374" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/places  (재색인)</text>
-<rect x="1183" y="824" width="173" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
-<text x="1270" y="836" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/congestion/batch</text>
+<rect x="1229" y="362" width="203" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
+<text x="1330" y="374" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/places/indexing  (색인)</text>
 <rect x="1078" y="502" width="144" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
 <text x="1150" y="514" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/pets  (스냅샷)</text>
 <rect x="1277" y="342" width="107" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
