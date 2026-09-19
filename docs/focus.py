@@ -464,3 +464,34 @@ d.note(40,880,"색인에는 동반 조건이 없음 — 카드마다 verdict 에
 d.note(40,902,"place.updated 를 받거나 매일 04:00 재색인 때 place 에서 다시 읽어 덮어씀 — place 수정 시각이 더 새 것만 쓰므로 같은 이벤트가 두 번 와도 결과가 같음")
 d.note(40,924,"이름 차례는 ko-x-icu — DB 기본 정렬이 한글을 글자 수로 세움 · 조회수는 Redis 에만 · 두 대로 떠도 재색인은 잠금으로 한 번만 돎")
 d.save("search-service","search-service 를 중심으로 · 직접 연결된 것만")
+
+# ── report-service
+d=D(1860,960)
+d.me("rp",820,450,380,110,"dom","report-service  :8092",
+     "제보 · 후기 신고를 받고 관리자가 처리함|API 6개  (공개 2 · 관리자 4)")
+d.node("gw",180,450,240,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
+d.node("cf",820,120,300,80,"plat","config-server","포트 · DB · 하루 제보 상한")
+d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
+d.node("pg",1560,300,300,110,"data","PostgreSQL  report_db",
+       "report 한 표 + outbox · inbox|처리 중 같은 제보는 부분 유일 인덱스가 막음|하루 상한도 DB 로 셈 — Redis 안 씀")
+d.node("pl",1560,560,300,90,"domn","place-service","목록의 장소 이름|GET /internal/places?ids=  100곳씩")
+d.node("us",1560,700,300,90,"domn","user-service","관리자 목록의 제보자 닉네임 · 사진|GET /internal/users?ids=")
+d.node("kf",700,810,300,80,"data","Kafka","report.resolved 발행|account.withdrawn 수신")
+d.node("au",220,810,240,80,"domn","auth-service","탈퇴를 알림")
+d.node("nt",1300,810,300,80,"fut","notification-service","처리 결과를 제보한 사람에게|아직 없음",dash=True)
+d.edge("gw","r","rp","l",B,"공개 2 · 관리자 4",lx=480,ly=434)
+d.edge("cf","b","rp","t",V,"기동 시 설정")
+d.edge("rp","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
+d.edge("rp","r","pg","l",O,"JPA · Flyway V20 · 처리할 때 행 잠금",via=[(1120,450),(1120,300)],lx=1200,ly=378)
+d.edge("rp","r","pl","l",G,"목록을 만들 때만",a_pt=(1010,480),via=[(1200,480),(1200,560)],lx=1212,ly=530,anchor="start")
+d.edge("rp","r","us","l",G,"관리자 목록 때만",a_pt=(1010,495),via=[(1240,495),(1240,700)],lx=1252,ly=670,anchor="start")
+d.edge("rp","b","kf","t",O,"Outbox 로 발행  (처리마다 한 번)",
+       a_pt=(900,505),via=[(900,660),(790,660)],b_pt=(790,770),lx=912,ly=600,anchor="start")
+d.edge("kf","t","rp","b",O,"account.withdrawn 을 받아 지움",
+       a_pt=(610,770),via=[(610,620),(700,620)],b_pt=(700,505),lx=598,ly=632,anchor="end")
+d.edge("au","r","kf","l",X,"account.withdrawn",lx=445,ly=802)
+d.edge("kf","r","nt","l",X,"report.resolved",dash=True,lx=1010,ly=802,anchor="start")
+d.note(40,880,"제보를 받을 때와 처리할 때는 다른 서비스를 부르지 않음 — 목록을 만들 때만 place · user 에 이름을 묻고, 못 받으면 그 칸만 비운 채 목록을 냄")
+d.note(40,902,"승인해도 장소 · 조건은 안 바뀜 — 관리자가 place · policy 관리자 API 로 먼저 고치고, 여기서는 결과를 남겨 report.resolved 로 한 번 알림")
+d.note(40,924,"같은 사람의 처리 중 같은 제보는 막고 하루 20건까지 받음 · 탈퇴하면 그 계정 제보를 처리 여부와 상관없이 전부 지움 (Inbox 로 한 번만)")
+d.save("report-service","report-service 를 중심으로 · 직접 연결된 것만")

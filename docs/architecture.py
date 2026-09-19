@@ -84,6 +84,8 @@ poly([(870,y("extract",16)),(1020,y("extract",16)),(1020,805),(1470,805),(1470,y
 poly([(870,y("search",-16)),(1060,y("search",-16)),(1060,380),(1600,380),(1600,398)],G,"/internal/places/indexing  (색인)",lx=1330,ly=374)
 poly([(870,y("review",16)),(1000,y("review",16)),(1000,520),(1400,520),(1400,y("pet",-16)),(1550,y("pet",-16))],G,"/internal/pets  (스냅샷)",lx=1150,ly=514)
 poly([(870,y("notification",-16)),(910,y("notification",-16)),(910,360),(1620,360),(1620,398)],G,"/internal/places",lx=1330,ly=354)
+poly([B("report"),(1210,1074),(1800,1074),(1800,430),R("place")],G,"/internal/places  (목록 이름)",lx=1650,ly=1093)
+poly([L("report"),(1085,y("report")),(1085,414),(1100,414)],G,"/internal/users  (제보자)",lx=1078,ly=960,anchor="end")
 
 # ── 게이트웨이 · 플랫폼 선
 BL="#3B82F6"; V="#6366F1"
