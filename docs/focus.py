@@ -306,8 +306,8 @@ d.node("cf",820,120,300,80,"plat","config-server","포트 · DB")
 d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
 d.node("pg",1560,300,300,110,"data","PostgreSQL  policy_db",
        "소스별 조건 · 합친 조건 · 근거 · 충돌 · 정정 이력|표 5개 + outbox · inbox|조건 20칸 — null 은 정보 없음")
-d.node("ex",1560,620,300,110,"fut","extract-service",
-       "원문에서 동반 조건을 뽑아|소스마다 한 벌씩 넣음|아직 없음",dash=True)
+d.node("ex",1560,620,300,110,"domn","extract-service",
+       "원문에서 동반 조건을 뽑아|소스마다 한 벌씩 넣음|규칙 + 모델 두 번 읽기")
 d.node("vd",180,700,240,100,"fut","verdict-service","판정할 때 조건 20칸과|근거를 한 번에 물어봄|아직 없음",dash=True)
 d.node("kf",700,810,300,80,"data","Kafka","policy.changed 발행|받는 것은 없음")
 d.node("nt",1300,810,300,80,"fut","notification-service","즐겨찾기한 사람에게 알림|아직 없음",dash=True)
@@ -315,7 +315,7 @@ d.edge("gw","r","po","l",B,"공개 1 · 관리자 5",lx=480,ly=434)
 d.edge("cf","b","po","t",V,"기동 시 설정")
 d.edge("po","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
 d.edge("po","r","pg","l",O,"JPA · Flyway V20~24 · 장소 잠금",via=[(1120,450),(1120,300)],lx=1200,ly=378)
-d.edge("ex","l","po","r",G,"POST /internal/policies/bulk   청크 100 · 상한 500",dash=True,
+d.edge("ex","l","po","r",G,"POST /internal/policies/bulk   청크 100 · 상한 500",
        a_pt=(1410,590),via=[(1260,590),(1260,470)],b_pt=(1000,470),lx=1272,ly=545,anchor="start")
 d.edge("vd","r","po","l",G,"POST /internal/policies/batch",dash=True,
        via=[(480,700),(480,480)],b_pt=(640,480),lx=494,ly=592,anchor="start")
@@ -344,7 +344,7 @@ d.node("cf",840,120,320,80,"plat","config-server","포트 · DB · 인증키 · 
 d.node("eu",1640,110,300,80,"plat","eureka-server","등록")
 d.node("pg",1640,310,300,110,"data","PostgreSQL  raw_db",
        "raw_document 17,471건 · place_id 17,463|ingest_run  (표 2개)|소스 넷 가운데 셋만 담김")
-d.node("ex",1640,570,300,100,"domn","extract-service","대기 문서를 가져가 해석|아직 없음")
+d.node("ex",1640,570,300,100,"domn","extract-service","대기 원문을 가져가 조건을 읽음|처리 결과를 상태로 되돌려 씀")
 d.node("pl",1640,830,300,110,"domn","place-service","소스가 겹친 것을 한 장소로|넘긴 결과를 돌려줌|동물병원은 바로 받음")
 
 d.edge("jk","r","ig","l",X,"POST /internal/ingest/trigger",dash=True,
@@ -374,3 +374,31 @@ d.edge("ig","b","pl","b",G,"DIRECT  raw 를 거치지 않고 바로",
 d.note(40,968,"소스가 넷인데 셋만 raw_db 에 담김 — 행정안전부 동물병원은 조건 문장이 없어 해석할 것도 원문으로 보여줄 것도 없어, 읽는 자리에서 바로 place 로 보냄")
 d.note(40,990,"관광공사 상세는 한 번에 3,237회라 하루 한도를 넘김 — 그날 받은 데까지 기록하고 다음 날 그 자리부터 이어받음 · 게이트웨이가 /internal 을 라우팅하지 않고 Kafka 도 쓰지 않음")
 d.save("ingest-service","ingest-service 를 중심으로 · 직접 연결된 것만")
+
+
+# ── extract-service
+d=D(1860,960)
+d.me("ex",820,450,380,110,"dom","extract-service  :8089",
+     "원문에서 반려동물 동반 조건을 읽어 policy 에 넣음|API 1개  (internal 트리거) · DB 없음")
+d.node("op",180,330,250,90,"ext","운영자","전량 · 다시 뽑기를 부름|limit 로 몇 건만도 됨")
+d.node("jk",180,600,250,90,"fut","Jenkins 잡","수집 뒤에 이어 부름|아직 없음",dash=True)
+d.node("cf",820,120,320,80,"plat","config-server","포트 · 청크 · 모델 설정")
+d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
+d.node("oa",1560,320,300,100,"ext","OpenAI  gpt-5.6-luna","같은 조각을 두 번 읽음|추론 medium · high")
+d.node("ol",1560,500,300,80,"ext","Ollama  qwen3.8:27b","로컬 모델 · 비교 · 시험용",dash=True)
+d.node("po",1560,700,300,110,"domn","policy-service","소스마다 한 벌씩 받아|장소마다 한 벌로 합쳐 둠|조건 20칸 · 근거 · 충돌")
+d.node("ig",820,780,340,110,"domn","ingest-service","원문 raw_db|장소에 이어진 대기 원문을 줌|처리 결과를 상태로 받음")
+d.edge("op","r","ex","l",B,"POST /internal/extract/trigger  → 202",
+       a_pt=(305,330),via=[(470,330),(470,430)],b_pt=(630,430),lx=318,ly=318,anchor="start")
+d.edge("jk","r","ex","l",X,"같은 트리거",dash=True,
+       a_pt=(305,600),via=[(500,600),(500,470)],b_pt=(630,470),lx=514,ly=560,anchor="start")
+d.edge("cf","b","ex","t",V,"기동 시 설정")
+d.edge("ex","r","eu","l",V,"등록",via=[(1130,430),(1130,120)],a_pt=(1010,430),lx=1142,ly=205,anchor="start")
+d.edge("ex","r","oa","l",P,"POST /v1/chat/completions  두 번",via=[(1170,450),(1170,320)],a_pt=(1010,450),lx=1182,ly=388,anchor="start")
+d.edge("ex","r","ol","l",X,"ollama 일 때",dash=True,via=[(1210,470),(1210,500)],a_pt=(1010,470),lx=1262,ly=490,anchor="start")
+d.edge("ex","r","po","l",G,"POST /internal/policies/bulk   청크 100",via=[(1250,490),(1250,700)],a_pt=(1010,490),lx=1262,ly=640,anchor="start")
+d.edge("ex","b","ig","t",G,"GET /internal/raw · PATCH /internal/raw/status",lx=832,ly=640,anchor="start")
+d.note(40,880,"정형 칸은 규칙이, 문장은 모델이 읽음 — 모델 값에는 늘 원문 조각 번호로 근거가 붙고, 번호가 원문에 없으면 값을 버림")
+d.note(40,902,"같은 조각을 추론 medium · high 로 두 번 읽어 칸마다 좁은 쪽을 남김 · 정형 칸과 본문이 갈리면 그 칸을 비우고 소스 내 충돌로 보냄")
+d.note(40,924,"DB 없음 — 어디까지 했는지는 ingest 원문 상태가 맡음 · 트리거는 바로 202 · 결과는 실행 끝의 요약 로그 한 줄")
+d.save("extract-service","extract-service 를 중심으로 · 직접 연결된 것만")
