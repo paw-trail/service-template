@@ -314,7 +314,7 @@ d.node("nt",1300,810,300,80,"fut","notification-service","즐겨찾기한 사람
 d.edge("gw","r","po","l",B,"공개 1 · 관리자 5",lx=480,ly=434)
 d.edge("cf","b","po","t",V,"기동 시 설정")
 d.edge("po","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
-d.edge("po","r","pg","l",O,"JPA · Flyway V20~24 · 장소 잠금",via=[(1120,450),(1120,300)],lx=1200,ly=378)
+d.edge("po","r","pg","l",O,"JPA · Flyway V20~25 · 장소 잠금",via=[(1120,450),(1120,300)],lx=1200,ly=378)
 d.edge("ex","l","po","r",G,"POST /internal/policies/bulk   청크 100 · 상한 500",
        a_pt=(1410,590),via=[(1260,590),(1260,470)],b_pt=(1000,470),lx=1272,ly=545,anchor="start")
 d.edge("vd","r","po","l",G,"POST /internal/policies/batch",dash=True,
