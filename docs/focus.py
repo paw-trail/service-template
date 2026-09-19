@@ -212,7 +212,7 @@ d.node("rd",1400,470,300,80,"data","Redis","최근 장소 · 요약 쿨다운 ·
 d.node("s3",180,150,240,80,"ext","AWS S3","프로필 사진",dash=True)
 d.node("ai",180,700,240,80,"ext","OpenAI","하루 요약 문장",dash=True)
 d.node("kf",800,760,300,90,"data","Kafka","account.created  수신|account.withdrawn  수신")
-d.node("pl",1400,690,300,110,"domn","place · verdict · review","이름 · 사진 · 좌표|판정 · 준비물 · 평점|아직 없음 — 스텁으로 흉내",dash=True)
+d.node("pl",1400,690,300,110,"domn","place · verdict · review","이름 · 사진 · 좌표|판정 · 준비물 · 평점|review 만 아직 없음 — 스텁으로 흉내",dash=True)
 d.edge("gw","r","us","l",B,"공개 API 18개 · 무인증 경로 0",lx=470,ly=422)
 d.edge("cf","b","us","t",V,"기동 시 설정")
 d.edge("us","r","eu","l",V,"등록",via=[(1080,440),(1080,120)],lx=1160,ly=205)
@@ -274,7 +274,7 @@ d.node("pg",1560,300,300,110,"data","PostgreSQL  pet_db",
 d.node("s3",180,150,240,80,"ext","AWS S3","반려동물 사진|브라우저가 직접 올림")
 d.node("rv",1560,620,300,110,"fut","review-service",
        "후기를 쓸 때 견종 · 체중을|스냅샷으로 복사해 감|아직 없음",dash=True)
-d.node("vd",180,700,240,100,"fut","verdict-service","판정 재료로|이 반려동물을 물어봄|아직 없음",dash=True)
+d.node("vd",180,700,240,100,"domn","verdict-service","판정 재료로|반려동물을 한 번에 물어봄|100마리까지")
 d.node("kf",700,810,300,80,"data","Kafka","pet.profile.updated 발행|account.withdrawn 수신")
 d.node("au",1300,810,300,80,"domn","auth-service","탈퇴를 알림")
 d.edge("gw","r","pt","l",B,"공개 7 · 관리자 2",lx=480,ly=434)
@@ -283,7 +283,7 @@ d.edge("pt","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
 d.edge("pt","r","pg","l",O,"JPA · Flyway V20~21",via=[(1120,450),(1120,300)],lx=1200,ly=378)
 d.edge("rv","l","pt","r",G,"GET /internal/pets?ids=   상한 100 · 소유권 검증",dash=True,
        a_pt=(1410,590),via=[(1260,590),(1260,470)],b_pt=(1000,470),lx=1272,ly=545,anchor="start")
-d.edge("vd","r","pt","l",G,"GET /internal/pets/{petId}",dash=True,
+d.edge("vd","r","pt","l",G,"GET /internal/pets?ids=",
        via=[(480,700),(480,480)],b_pt=(640,480),lx=494,ly=592,anchor="start")
 d.edge("pt","b","kf","t",O,"Outbox 로 발행",
        a_pt=(900,505),via=[(900,660),(790,660)],b_pt=(790,770),lx=912,ly=600,anchor="start")
@@ -308,7 +308,7 @@ d.node("pg",1560,300,300,110,"data","PostgreSQL  policy_db",
        "소스별 조건 · 합친 조건 · 근거 · 충돌 · 정정 이력|표 5개 + outbox · inbox|조건 20칸 — null 은 정보 없음")
 d.node("ex",1560,620,300,110,"domn","extract-service",
        "원문에서 동반 조건을 뽑아|소스마다 한 벌씩 넣음|규칙 + 모델 두 번 읽기")
-d.node("vd",180,700,240,100,"fut","verdict-service","판정할 때 조건 20칸과|근거를 한 번에 물어봄|아직 없음",dash=True)
+d.node("vd",180,700,240,100,"domn","verdict-service","판정할 때 조건 20칸과|근거를 한 번에 물어봄|500곳까지")
 d.node("kf",700,810,300,80,"data","Kafka","policy.changed 발행|받는 것은 없음")
 d.node("nt",1300,810,300,80,"fut","notification-service","즐겨찾기한 사람에게 알림|아직 없음",dash=True)
 d.edge("gw","r","po","l",B,"공개 1 · 관리자 5",lx=480,ly=434)
@@ -317,12 +317,12 @@ d.edge("po","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
 d.edge("po","r","pg","l",O,"JPA · Flyway V20~25 · 장소 잠금",via=[(1120,450),(1120,300)],lx=1200,ly=378)
 d.edge("ex","l","po","r",G,"POST /internal/policies/bulk   청크 100 · 상한 500",
        a_pt=(1410,590),via=[(1260,590),(1260,470)],b_pt=(1000,470),lx=1272,ly=545,anchor="start")
-d.edge("vd","r","po","l",G,"POST /internal/policies/batch",dash=True,
+d.edge("vd","r","po","l",G,"POST /internal/policies/batch",
        via=[(480,700),(480,480)],b_pt=(640,480),lx=494,ly=592,anchor="start")
 d.edge("po","b","kf","t",O,"Outbox 로 발행  (수신하지 않음)",
        a_pt=(900,505),via=[(900,660),(790,660)],b_pt=(790,770),lx=912,ly=600,anchor="start")
 d.edge("kf","r","nt","l",X,"policy.changed",dash=True,lx=1010,ly=802,anchor="start")
-d.edge("kf","l","vd","b",X,"policy.changed  캐시 비우기",dash=True,
+d.edge("kf","l","vd","b",X,"policy.changed  캐시를 붙일 때 받음",dash=True,
        via=[(180,810)],lx=370,ly=802,anchor="middle")
 d.note(40,880,"조건은 소스마다 한 벌씩 받아 한 벌로 합침 — OWNER > MANUAL > 공공 3종 · 공공끼리는 칸마다 채우고, 값이 갈리면 충돌로 남겨 배지를 붙임")
 d.note(40,902,"null 과 false 는 다른 값임 — null 은 정보 없음, false 는 요구하지 않음 · 관리자 정정은 20칸 전체 교체라 비워 둔 칸도 뜻을 가짐")
@@ -402,3 +402,34 @@ d.note(40,880,"정형 칸은 규칙이, 문장은 모델이 읽음 — 모델 �
 d.note(40,902,"같은 조각을 추론 medium · high 로 두 번 읽어 칸마다 좁은 쪽을 남김 · 정형 칸과 본문이 갈리면 그 칸을 비우고 소스 내 충돌로 보냄")
 d.note(40,924,"DB 없음 — 어디까지 했는지는 ingest 원문 상태가 맡음 · 트리거는 바로 202 · 결과는 실행 끝의 요약 로그 한 줄")
 d.save("extract-service","extract-service 를 중심으로 · 직접 연결된 것만")
+
+
+# ── verdict-service
+d=D(1860,960)
+d.me("vd",820,450,380,110,"dom","verdict-service  :8086",
+     "장소마다 · 반려동물마다 동반 가능 여부를 판정|API 2개  (공개 1 · internal 1) · DB · 캐시 없음")
+d.node("gw",180,300,250,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
+d.node("us",180,540,250,100,"domn","user-service","즐겨찾기 · 최근 · 일정 · 방문 카드|판정 배지와 준비물")
+d.node("sr",180,760,250,80,"fut","search-service","검색 카드|아직 없음",dash=True)
+d.node("cf",820,120,320,80,"plat","config-server","포트 한 줄")
+d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
+d.node("pt",1560,380,300,110,"domn","pet-service","반려동물을 한 번에 100마리|체중 · 크기 · 맹견 · 이동장 · 접종|남의 것은 조용히 뺌")
+d.node("po",1560,640,300,110,"domn","policy-service","장소마다 조건 20칸 · 근거|충돌 여부 · 정정 출처|한 번에 500곳")
+d.node("kf",820,780,320,80,"fut","Kafka","policy.changed · pet.profile.updated|캐시를 붙일 때 받음",dash=True)
+d.edge("gw","r","vd","l",B,"GET /api/v1/places/{placeId}/verdict",
+       via=[(470,300),(470,430)],b_pt=(630,430),lx=318,ly=288,anchor="start")
+d.edge("us","r","vd","l",G,"POST /internal/verdicts/batch",
+       via=[(560,540),(560,470)],b_pt=(630,470),lx=318,ly=528,anchor="start")
+d.edge("sr","r","vd","l",X,"같은 목록 판정",dash=True,
+       via=[(600,760),(600,490)],b_pt=(630,490),lx=318,ly=748,anchor="start")
+d.edge("cf","b","vd","t",V,"기동 시 설정")
+d.edge("vd","r","eu","l",V,"등록",via=[(1130,430),(1130,120)],a_pt=(1010,430),lx=1142,ly=205,anchor="start")
+d.edge("vd","r","pt","l",G,"① GET /internal/pets?ids=",
+       a_pt=(1010,450),via=[(1200,450),(1200,380)],b_pt=(1410,380),lx=1212,ly=368,anchor="start")
+d.edge("vd","r","po","l",G,"② POST /internal/policies/batch",
+       a_pt=(1010,480),via=[(1240,480),(1240,640)],b_pt=(1410,640),lx=1252,ly=560,anchor="start")
+d.edge("kf","t","vd","b",X,"아직 받지 않음",dash=True,lx=832,ly=640,anchor="start")
+d.note(40,880,"반려견마다 네 단계로 판정 — 불가 > 확인 필요 > 조건부 > 가능 · 판정에 필요한 칸이 비면 가능 대신 확인 필요 · 이유 줄마다 근거와 추출 방식")
+d.note(40,902,"pet → policy 를 차례로 한 번씩 부름 · 사용자 헤더 둘이 pet 호출에 그대로 따라감 · 헤더가 없으면 401 · 둘 중 하나라도 못 부르면 502")
+d.note(40,924,"DB · 캐시 · 이벤트 없음 — 부를 때마다 새로 판정 · 캐시와 이벤트 소비는 부하를 잰 뒤 · 장소 정보는 화면이 가져 place 를 부르지 않음")
+d.save("verdict-service","verdict-service 를 중심으로 · 직접 연결된 것만")
