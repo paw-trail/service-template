@@ -40,7 +40,7 @@ region(60,335,W-120,H-405,"프라이빗 서브넷  ─  바깥에서 직접 닿�
 # ── VPC 밖
 box(200,75,260,72,"ext","브라우저","React 프론트 · 쿠키에 JWT")
 box(560,75,300,72,"ext","Google OAuth · Gmail SMTP","auth 만 부름")
-box(900,75,300,72,"ext","공공데이터 API · 집중률 API · LLM","ingest · congestion · extract 가 부름")
+box(900,75,300,72,"ext","공공데이터 API · LLM","ingest · weather · extract 가 부름")
 box(1210,75,260,72,"ext","GitHub","paw-trail/config 저장소")
 
 # ── 왼쪽 입구 열
@@ -52,12 +52,12 @@ box(1210,230,280,70,"plat","config-server  :8888","설정 저장소를 읽어 �
 box(2050,230,280,70,"plat","eureka-server  :8761","이름 → 주소 장부")
 
 # ── 가운데 도메인 격자 (부르는 쪽 → 받는 쪽 = 왼쪽 → 오른쪽)
-region(600,340,1230,770,"도메인 서비스 14개  ─  왼쪽이 부르고 오른쪽이 받음.  진한 초록 = 자기 DB 있음 · 연한 초록 = 무상태","#22C55E",dash="5,5",lpos="bottom")
+region(600,340,1230,770,"도메인 서비스 13개  ─  왼쪽이 부르고 오른쪽이 받음.  진한 초록 = 자기 DB 있음 · 연한 초록 = 무상태","#22C55E",dash="5,5",lpos="bottom")
 COL={0:760,1:1210,2:1660}; ROW={r:430+r*150 for r in range(5)}; BW,BH=220,64
 dom={ # name:(col,row,port,db,pub,sub,extra)
  "review":(0,0,8094,True,0,1,""),"notification":(0,1,8093,True,0,3,""),"search":(0,2,8087,True,0,1,""),"extract":(0,3,8089,False,0,0,"→ LLM"),"auth":(0,4,8081,True,2,0,"→ Google · Gmail"),
  "user":(1,0,8082,True,0,2,""),"ingest":(1,1,8088,True,0,0,"→ 공공 API"),"verdict":(1,2,8086,False,0,2,""),"report":(1,4,8092,True,1,1,""),
- "place":(2,0,8084,True,1,0,""),"pet":(2,1,8083,True,1,1,""),"policy":(2,2,8085,True,1,0,""),"congestion":(2,3,8090,False,0,0,"→ 집중률 API"),"route":(2,4,8091,False,0,0,"")}
+ "place":(2,0,8084,True,1,0,""),"pet":(2,1,8083,True,1,1,""),"policy":(2,2,8085,True,1,0,""),"weather":(2,3,8090,False,0,0,"→ 기상청")}
 P={}
 for n,(c,r,port,db,pub,sub,ex) in dom.items():
     cx,cy=COL[c],ROW[r]; P[n]=(cx,cy)
@@ -100,7 +100,7 @@ poly([(1830,400),(1990,400),(1990,265)],V,"등록 · 하트비트",lx=2060,ly=39
 
 # ── 오른쪽 데이터
 box(2050,620,300,80,"data","PostgreSQL  :5432","DB 10개 · 서비스마다 자기 것만")
-box(2050,780,300,80,"data","Redis  :6379","auth · verdict · search 만")
+box(2050,780,300,80,"data","Redis  :6379","auth · user · search · weather")
 poly([(1830,620),(1900,620)],"#F97316","JPA · Flyway",lx=1865,ly=612,lsize=11,halo=False)
 poly([(1830,780),(1900,780)],"#F97316")
 

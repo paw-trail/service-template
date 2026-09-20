@@ -3,8 +3,8 @@
 **함께하개**는 반려동물과 함께 갈 수 있는 장소를 찾고, 우리 아이가 그곳에
 들어갈 수 있는지 판정해 주는 서비스입니다.
 
-백엔드는 **작은 서버 14개**로 나뉘어 있고, 각각이 **별도의 GitHub 저장소**입니다.
-이 저장소는 그 14개를 만들 때 **복제해서 시작하는 틀**입니다.
+백엔드는 **작은 서버 13개**로 나뉘어 있고, 각각이 **별도의 GitHub 저장소**입니다.
+이 저장소는 그 13개를 만들 때 **복제해서 시작하는 틀**입니다.
 
 ---
 
@@ -33,16 +33,16 @@ paw-trail (GitHub 조직)
 │
 ├── service-template        이 저장소. 도메인 서비스를 만들 때 복제함
 │
-├── 도메인 서비스 14개         auth · user · pet · place · policy · search
+├── 도메인 서비스 13개         auth · user · pet · place · policy · search
 │                           ingest · extract · report · review · notification
-│                           verdict · congestion · route
+│                           verdict · weather
 │                           → 전부 service-template 을 복제해서 만듦
 │
 ├── 플랫폼 3개               gateway-server   요청을 받아 어느 서비스로 보낼지 정함
 │                           eureka-server    어느 서비스가 어디 떠 있는지 알고 있음
 │                           config-server    설정 파일을 서비스들에게 내려 줌
 │
-├── common                  14개가 함께 쓰는 자바 라이브러리 (jar 로 배포)
+├── common                  13개가 함께 쓰는 자바 라이브러리 (jar 로 배포)
 ├── config                  설정 파일 저장소 (포트 · DB 주소 · 라우트)
 └── infra                   Docker Compose (Kafka · Redis · PostgreSQL · 관측)
 ```
@@ -1106,7 +1106,7 @@ serviceName: 'place'          →  ghcr.io/paw-trail/place 로 올림
 | 노드 | 서비스 | 성격 |
 |---|---|---|
 | `core` | verdict ×3 · search ×2 · place · policy | 핫패스. 스케일아웃 대상 |
-| `app` | auth · user · pet · report · notification · congestion · route | 콜드패스. 1개씩 |
+| `app` | auth · user · pet · report · review · notification · weather | 콜드패스. 1개씩 |
 | `edge` | nginx · gateway · eureka · config | 진입점과 플랫폼 |
 
 도메인이 비슷한 것끼리 묶지 않는 이유는, **부하가 그 배치를 따라가지 않아
@@ -1167,7 +1167,7 @@ docker compose up -d
 ````
 
 > **지침을 남겨 두지 않습니다.** 서비스마다 같은 분량이 복사되면
-> 한 곳을 고칠 때 14곳을 고쳐야 합니다. 공통 지침은 `service-template` 하나만
+> 한 곳을 고칠 때 13곳을 고쳐야 합니다. 공통 지침은 `service-template` 하나만
 > 유지하고 서비스 README 는 **그 서비스만의 것**을 적습니다.
 
 > ⚠**위는 최소 형태이고 실제로는 더 길어졌습니다.**
@@ -1206,7 +1206,7 @@ docker compose up -d
 
 | 그림 | 어디 것 | 왜 |
 |---|---|---|
-| ① · ② | **`service-template` 의 raw 주소** | 전체 구조는 서비스가 늘 때마다 바뀝니다. 사본을 두면 14곳이 서로 다른 시점을 보여 줍니다 |
+| ① · ② | **`service-template` 의 raw 주소** | 전체 구조는 서비스가 늘 때마다 바뀝니다. 사본을 두면 13곳이 서로 다른 시점을 보여 줍니다 |
 | ③ | **자기 저장소의 `docs/`** | 그 레포에만 해당하는 그림이라 함께 커밋합니다 |
 
 > **①②를 자기 저장소로 복사하지 않습니다.** 주소를 그대로 쓰면 원본을 고칠 때
@@ -1385,7 +1385,7 @@ auto_review:
 
 ### 1-5. DB 를 사용하지 않는 서비스라면
 
-`verdict` · `congestion` · `route` · `extract` 처럼 데이터베이스가 없는 서비스는
+`verdict` · `weather` · `extract` 처럼 데이터베이스가 없는 서비스는
 **다섯 군데를 지워야 합니다.**
 
 > **한 곳만 고치면 컴파일이나 기동이 실패합니다.** 아래 순서대로 함께 처리합니다.
@@ -1397,6 +1397,13 @@ auto_review:
 Spring Batch 를 쓰지 않기로 정해 실행 이력 표가 필요 없습니다.
 어디까지 처리했는지는 `ingest` 가 가진 원문의 상태가 맡습니다.
 이벤트를 내지 않고 캐시도 쓰지 않아 Kafka · Redis 의존성도 함께 지웁니다.
+
+---
+
+**`weather` 는 Redis 의존성을 남깁니다.**
+
+예보를 격자와 발표 시각으로 Redis 에 담아 두고, 새 발표를 못 받으면 직전 발표를 꺼내 씁니다.
+이벤트는 내지도 받지도 않아 Kafka 의존성은 지웁니다. 바깥 호출을 감싸는 회로 차단기 스타터도 남깁니다.
 
 ---
 
@@ -2046,7 +2053,7 @@ spring:
 
 **`/api/v1/places/` 아래에는 `/**` 를 쓰지 않습니다.**
 
-이 접두사 아래에 서비스 6개가 섞여 있습니다. 장소 상세 화면에서 브라우저가
+이 접두사 아래에 서비스 4개가 섞여 있습니다. 장소 상세 화면에서 브라우저가
 여러 개를 한꺼번에 부르기 때문이며, **경로는 장소를 중심으로 짜여 있고
 소유 서비스는 갈려 있습니다.**
 
@@ -2057,9 +2064,10 @@ spring:
 | `/api/v1/places/{placeId}/verdict` | verdict |
 | `/api/v1/places/{placeId}/reviews` | review |
 | `/api/v1/places/{placeId}/conflicts` | policy |
-| `/api/v1/places/{placeId}/congestion` | congestion |
 
-여기에 `Path=/api/v1/places/**` 를 쓰면 **하위 경로를 모두 먹어 나머지 다섯으로
+> 날씨는 `/api/v1/weather?lat=&lon=` 으로 따로 부르므로 이 겹침과 무관합니다.
+
+여기에 `Path=/api/v1/places/**` 를 쓰면 **하위 경로를 모두 먹어 다른 서비스로
 갈 요청이 전부 첫 라우트로 갑니다.** 게이트웨이는 처음 맞는 라우트에서 멈추기
 때문입니다.
 
@@ -3013,7 +3021,7 @@ Settings → Editor → File Encodings
 
 | | 무엇이 문제인가 |
 |---|---|
-| 메모리 | 컨테이너 하나가 640MB 안팎이라 14개를 다 올릴 수 없습니다 |
+| 메모리 | 컨테이너 하나가 640MB 안팎이라 13개를 다 올릴 수 없습니다 |
 | 개발 속도 | 코드를 고칠 때마다 이미지를 다시 만들어야 합니다 |
 
 > 개발이 끝난 서비스는 이미지로 구워 컨테이너로 돌립니다.
@@ -3449,8 +3457,8 @@ FATAL: password authentication failed for user "place_svc"
 | 서비스 | 포트 | | 서비스 | 포트 |
 |---|---|---|---|---|
 | auth | 8081 | | extract | 8089 |
-| user | 8082 | | congestion | 8090 |
-| pet | 8083 | | route | 8091 |
+| user | 8082 | | weather | 8090 |
+| pet | 8083 | | (비움) | 8091 |
 | place | 8084 | | report | 8092 |
 | policy | 8085 | | notification | 8093 |
 | verdict | 8086 | | review | 8094 |
@@ -3647,7 +3655,7 @@ spring.config.import 에 optional: 이 붙어 있음
 기본값은 `postgres:17-alpine` 입니다. arm64 를 지원해 Apple Silicon 에서
 에뮬레이션 없이 돕니다.
 
-**`search` · `route` · `place` 는 PostGIS 가 필요합니다.**
+**`search` · `place` 는 PostGIS 가 필요합니다.**
 
 ```java
 // before
@@ -4747,7 +4755,7 @@ v0.2.0    기능이 늘어남
 **저장소에 Jenkinsfile 이 있는 이유**
 
 파이프라인을 저장소 안에 두면 **코드와 배포 방식이 같은 커밋에 담깁니다.**
-서비스가 14개라 Jenkins 화면에서 각각 설정하면 관리가 안 됩니다.
+서비스가 13개라 Jenkins 화면에서 각각 설정하면 관리가 안 됩니다.
 
 ---
 
@@ -4758,7 +4766,7 @@ EC2 를 셋으로 나눕니다. **기준은 부하의 성격입니다.**
 | 노드 | 올라가는 것 | 성격 |
 |---|---|---|
 | `core` | verdict ×3 · search ×2 · place · policy | 핫패스. 스케일아웃 대상 |
-| `app` | auth · user · pet · report · notification · congestion · route | 콜드패스. 1개씩 |
+| `app` | auth · user · pet · report · review · notification · weather | 콜드패스. 1개씩 |
 | `edge` | nginx · gateway · eureka · config | 진입점과 플랫폼 |
 
 ```groovy
@@ -6615,7 +6623,7 @@ account.withdrawn 을 받았는데 프로필이 없으면
 
 > **②의 문턱이 생각보다 높습니다.** S3 presigned URL 발급은 3개 서비스가,
 > 커밋 뒤 실행기(`AfterCommitExecutor`)는 4개 서비스가 쓰는데 **둘 다 각자
-> 만드는 쪽으로 정했습니다.** 중복 3~4곳을 감수하는 편이 17개가 함께 지고
+> 만드는 쪽으로 정했습니다.** 중복 3~4곳을 감수하는 편이 13개가 함께 지고
 > 가는 것보다 싸다고 봤습니다.
 
 ---
@@ -6641,7 +6649,7 @@ account.withdrawn 을 받았는데 프로필이 없으면
 `AuthService` 안의 private 메서드였는데 비밀번호 재설정도 같은 것이 필요해져
 **2곳이 되자 클래스로 꺼냈습니다.**
 
-**미리 올려 두지 않는 이유는 근거가 예측이기 때문입니다.** 안 쓰게 되면 17개가
+**미리 올려 두지 않는 이유는 근거가 예측이기 때문입니다.** 안 쓰게 되면 13개가
 지고 가는 빈이 하나 늘어나고, 그것을 되돌리려면 다시 재배포와 전 서비스
 버전업이 붙습니다.
 
@@ -7179,7 +7187,7 @@ XxxJpaRepository     그 구현이 쓰는 부품
 | `repository/PlaceRepository` | `persistence/PlaceRepositoryImpl` |
 | `repository/PlaceCacheStore` | `persistence/PlaceCacheStoreImpl` |
 | `provider/PolicyProvider` | `provider/internal/PolicyProviderImpl` |
-| `provider/KakaoMapProvider` | `provider/external/KakaoMapProviderImpl` |
+| `provider/LlmProvider` | `provider/external/LlmProviderImpl` |
 | `event/PlaceEventProducer` | `message/kafka/producer/PlaceEventProducerImpl` |
 
 ---
@@ -7737,9 +7745,9 @@ petEventProducer.profileUpdated(pet, changed);
 domain/provider/PetProvider.java                       약속
 domain/provider/dto/PetData.java                       받아올 데이터의 모양
 
-infrastructure/provider/internal/PetProviderImpl.java        우리 서비스를 부를 때
-infrastructure/provider/external/KakaoMapProviderImpl.java   바깥 시스템을 부를 때
-infrastructure/provider/external/dto/KakaoRouteResponse.java 그쪽이 보내는 형태
+infrastructure/provider/internal/PetProviderImpl.java             우리 서비스를 부를 때
+infrastructure/provider/external/KmaForecastProviderImpl.java     바깥 시스템을 부를 때 (weather)
+infrastructure/provider/external/KmaResponseParser.java           그쪽 형태를 우리 형태로
 ```
 
 > **아래 예시는 `user` 가 `pet` 을 부르는 실물입니다.** 대표 반려동물을 지정하기 전에
@@ -7837,7 +7845,7 @@ public class PetProviderImpl implements PetProvider {
 
 | | `internalRestClientBuilder` | `externalRestClientBuilder` |
 |---|---|---|
-| 부르는 곳 | 우리 서비스 | 카카오맵 · 기상청 · 관광공사 |
+| 부르는 곳 | 우리 서비스 | 기상청 · 관광공사 · LLM |
 | 주소 | `lb://pet-service` | `https://apis.data.go.kr` |
 | 주소를 푸는 것 | 유레카 | 설정에 박힌 고정 주소 |
 | 인증 헤더 | `X-User-Id` · `X-User-Role` 을 실음 | **싣지 않음** |
@@ -7891,41 +7899,47 @@ public class PetProviderImpl implements PetProvider {
 
 ---
 
-**바깥 시스템을 부르는 구현입니다.**
+**바깥 시스템을 부르는 구현입니다.** `weather` 가 기상청 단기예보를 부르는 실물입니다.
 
 ```java
-// infrastructure/provider/external/dto/KakaoRouteResponse.java
-package com.pawtrail.route.infrastructure.provider.external.dto;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.util.List;
-
-// 그쪽 규격이라 우리가 정하지 않음
-// 필요한 칸만 받고 나머지는 무시함
-@JsonIgnoreProperties(ignoreUnknown = true)
-public record KakaoRouteResponse(List<Route> routes) {
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Route(Summary summary) { }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Summary(int distance, int duration) { }
-}
-```
-
-**이 형태를 그대로 위로 올리지 않습니다.** `domain/provider` 의 약속이 정한
-모양으로 바꿔서 넘깁니다.
-
-```java
+// infrastructure/provider/external/KmaForecastProviderImpl.java
 @Override
-public RouteData findRoute(Coordinate from, Coordinate to) {
-    KakaoRouteResponse response = restClient.get()...;
-
-    // 그쪽 형태 → 우리 형태
-    var summary = response.routes().getFirst().summary();
-    return new RouteData(summary.distance(), summary.duration());
+public Optional<ForecastRun> fetch(Grid grid, LocalDateTime baseAt) {
+    // 부르고 · 읽고 · 우리 형태로 바꾸는 일은 fetchWithRetry 안에서 함
+    // 차단기가 열려 있으면 기상청을 부르지 않고 바로 실패로 넘어감
+    return circuitBreakerFactory.create(CIRCUIT_BREAKER_ID).run(
+            () -> fetchWithRetry(grid, baseAt),
+            failure -> {
+                throw new ForecastUnavailableException(reason(failure), failure);
+            });
 }
 ```
+
+**그쪽 형태를 그대로 위로 올리지 않습니다.** `domain/provider` 의 약속이 정한
+모양(`ForecastRun`)으로 바꿔서 넘깁니다. 아래는 그 자리의 요지입니다.
+
+```java
+// infrastructure/provider/external/KmaResponseParser.java
+// 그쪽 규격이라 우리가 정하지 않음 — 한 줄에 한 칸씩 옴 (category · fcstDate · fcstTime · fcstValue)
+// 필요한 칸(TMP · SKY · PTY · POP)만 시각별로 모으고 나머지(풍속 · 습도 등)는 버림
+for (JsonNode item : items) {
+    LocalDateTime at = LocalDateTime.parse(item.path("fcstDate").asText() + item.path("fcstTime").asText(), DATE_TIME);
+    byTime.computeIfAbsent(at, k -> new LinkedHashMap<>())
+            .put(item.path("category").asText(), item.path("fcstValue").asText());
+}
+
+// 그쪽 형태 → 우리 형태 (domain/model/HourlyForecast)
+hours.add(new HourlyForecast(
+        entry.getKey(),
+        tmp,
+        sky == null ? null : SkyCondition.fromCode(sky),
+        pty == null ? null : PrecipitationType.fromCode(pty),
+        pop));
+```
+
+> 이 응답은 칸마다 한 줄씩 오는 모양이라 레코드로 받지 않고 `JsonNode` 로 읽어 시각별로 모읍니다.
+> 칸이 적고 모양이 고정된 응답이면 `@JsonIgnoreProperties(ignoreUnknown = true)` 를 단 레코드로
+> 받는 편이 짧습니다.
 
 <br><br>
 
@@ -7980,11 +7994,11 @@ PlaceService.create()  ──▶  [ 프록시 ]  ──▶  PlaceLogService.save
 
 ### 8-8. DB 가 없는 서비스 (verdict)
 
-`verdict` · `congestion` · `route` 가 여기 해당합니다.
+`verdict` · `weather` · `extract` 가 여기 해당합니다.
 **위 구조에서 저장 관련 계층이 통째로 빠집니다.**
 
-> `route` 가 여기 들어온 것은 나중입니다. 동물병원이 `place` 로 편입되면서
-> 소유하던 DB 가 사라졌고 **남은 일이 카카오맵 경로 계산뿐이 되었습니다.**
+> `weather` 는 DB 는 없지만 예보를 Redis 에 담아 두므로 `domain/repository` 와
+> `infrastructure/persistence` 에 캐시 저장소 하나가 남습니다.
 
 ---
 
@@ -8085,7 +8099,7 @@ public record Reason(String axis, String detail, String source) { }
 
 ## 9. 서비스별 형태 분류
 
-도메인 서비스는 **14개**입니다. 플랫폼 3개를 합쳐 17개입니다.
+도메인 서비스는 **13개**입니다. 플랫폼 3개를 합쳐 16개입니다.
 
 <br><br>
 
@@ -8106,8 +8120,7 @@ public record Reason(String axis, String detail, String source) { }
 | | review | `review_db` (방문 후기) |
 | | notification | `notif_db` |
 | **DB 없음** | verdict | 무상태 순수 계산 |
-| | congestion | Redis 캐시만 씁니다 |
-| | route | 카카오맵 경로 계산만 합니다 |
+| | weather | 기상청 단기예보를 격자와 발표 시각으로 Redis 에 캐시합니다 |
 | | extract | `ingest` 의 원문을 `/internal` 로 받아 조건을 뽑고 `policy` 로 넘깁니다. 어디까지 했는지는 원문의 상태가 맡습니다 |
 | **다른 형태** | gateway · config · eureka | 도메인 서비스가 아니라 4계층 구조를 따르지 않습니다 |
 
@@ -8139,13 +8152,13 @@ user_db   ←  user_svc 만 접속
 
 ---
 
-**route 에 DB 가 없는 이유입니다.**
+**weather 에 DB 가 없는 이유입니다.**
 
-동물병원이 `place` 로 편입되어 `vet_db` 가 사라졌습니다.
-남은 일은 카카오맵 경로 계산뿐입니다.
+예보의 원본은 기상청이 가지고 있고 이 서비스는 받은 발표를 잠시 캐시에 둘 뿐입니다.
+발표가 3시간마다 바뀌므로 오래 담아 둘 표가 없습니다.
 
-> **congestion 과 합치지는 않습니다.** 합치면 **카카오맵 장애가 집중률까지
-> 끊습니다.**
+> **route 는 없앴습니다.** 경로 안내가 프론트의 카카오맵 웹 링크로 옮겨 가
+> 서버에서 부를 곳이 사라졌습니다.
 
 <br><br>
 
@@ -8170,7 +8183,7 @@ user_db   ←  user_svc 만 접속
 | search | — | `place.updated` |
 | notification | — | `policy.changed` · `report.resolved` · `account.withdrawn` |
 | verdict | — | `policy.changed` · `pet.profile.updated` (inbox 미사용) |
-| ingest · extract · congestion · route | — | — |
+| ingest · extract · weather | — | — |
 
 ---
 

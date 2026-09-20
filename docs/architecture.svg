@@ -11,8 +11,8 @@
 <text x="560" y="71" font-size="18" font-weight="bold" text-anchor="middle" fill="#111827">Google OAuth · Gmail SMTP</text>
 <text x="560" y="93" font-size="12" font-weight="normal" text-anchor="middle" fill="#4B5563">auth 만 부름</text>
 <rect x="750.0" y="39.0" width="300" height="72" rx="12" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="2.2"/>
-<text x="900" y="71" font-size="18" font-weight="bold" text-anchor="middle" fill="#111827">공공데이터 API · 집중률 API · LLM</text>
-<text x="900" y="93" font-size="12" font-weight="normal" text-anchor="middle" fill="#4B5563">ingest · congestion · extract 가 부름</text>
+<text x="900" y="71" font-size="18" font-weight="bold" text-anchor="middle" fill="#111827">공공데이터 API · LLM</text>
+<text x="900" y="93" font-size="12" font-weight="normal" text-anchor="middle" fill="#4B5563">ingest · weather · extract 가 부름</text>
 <rect x="1080.0" y="39.0" width="260" height="72" rx="12" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="2.2"/>
 <text x="1210" y="71" font-size="18" font-weight="bold" text-anchor="middle" fill="#111827">GitHub</text>
 <text x="1210" y="93" font-size="12" font-weight="normal" text-anchor="middle" fill="#4B5563">paw-trail/config 저장소</text>
@@ -32,7 +32,7 @@
 <text x="2050" y="226" font-size="18" font-weight="bold" text-anchor="middle" fill="#111827">eureka-server  :8761</text>
 <text x="2050" y="248" font-size="12" font-weight="normal" text-anchor="middle" fill="#4B5563">이름 → 주소 장부</text>
 <rect x="600" y="340" width="1230" height="770" rx="18" fill="none" stroke="#22C55E" stroke-width="2" stroke-dasharray="5,5" opacity="0.85"/>
-<text x="616" y="1098" font-size="15" font-weight="bold" text-anchor="start" fill="#22C55E">도메인 서비스 14개  ─  왼쪽이 부르고 오른쪽이 받음.  진한 초록 = 자기 DB 있음 · 연한 초록 = 무상태</text>
+<text x="616" y="1098" font-size="15" font-weight="bold" text-anchor="start" fill="#22C55E">도메인 서비스 13개  ─  왼쪽이 부르고 오른쪽이 받음.  진한 초록 = 자기 DB 있음 · 연한 초록 = 무상태</text>
 <rect x="650.0" y="398.0" width="220" height="64" rx="10" fill="#DCFCE7" stroke="#22C55E" stroke-width="2.2"/>
 <text x="760" y="424" font-size="17" font-weight="bold" text-anchor="middle" fill="#111827">review</text>
 <text x="760" y="446" font-size="11" font-weight="normal" text-anchor="middle" fill="#4B5563">:8094 · DB · ↓1</text>
@@ -70,11 +70,8 @@
 <text x="1660" y="724" font-size="17" font-weight="bold" text-anchor="middle" fill="#111827">policy</text>
 <text x="1660" y="746" font-size="11" font-weight="normal" text-anchor="middle" fill="#4B5563">:8085 · DB · ↑1</text>
 <rect x="1550.0" y="848.0" width="220" height="64" rx="10" fill="#F0FDF4" stroke="#86EFAC" stroke-width="2.2"/>
-<text x="1660" y="874" font-size="17" font-weight="bold" text-anchor="middle" fill="#111827">congestion</text>
-<text x="1660" y="896" font-size="11" font-weight="normal" text-anchor="middle" fill="#4B5563">:8090 · 무상태 · → 집중률 API</text>
-<rect x="1550.0" y="998.0" width="220" height="64" rx="10" fill="#F0FDF4" stroke="#86EFAC" stroke-width="2.2"/>
-<text x="1660" y="1024" font-size="17" font-weight="bold" text-anchor="middle" fill="#111827">route</text>
-<text x="1660" y="1046" font-size="11" font-weight="normal" text-anchor="middle" fill="#4B5563">:8091 · 무상태</text>
+<text x="1660" y="874" font-size="17" font-weight="bold" text-anchor="middle" fill="#111827">weather</text>
+<text x="1660" y="896" font-size="11" font-weight="normal" text-anchor="middle" fill="#4B5563">:8090 · 무상태 · → 기상청</text>
 <polyline points="870.0,430 1100.0,430" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="870.0,730 1100.0,730" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="1320.0,430 1550.0,430" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
@@ -102,7 +99,7 @@
 <text x="2050" y="638" font-size="12" font-weight="normal" text-anchor="middle" fill="#4B5563">DB 10개 · 서비스마다 자기 것만</text>
 <rect x="1900.0" y="740.0" width="300" height="80" rx="12" fill="#FFEDD5" stroke="#F97316" stroke-width="2.2"/>
 <text x="2050" y="776" font-size="18" font-weight="bold" text-anchor="middle" fill="#111827">Redis  :6379</text>
-<text x="2050" y="798" font-size="12" font-weight="normal" text-anchor="middle" fill="#4B5563">auth · verdict · search 만</text>
+<text x="2050" y="798" font-size="12" font-weight="normal" text-anchor="middle" fill="#4B5563">auth · user · search · weather</text>
 <polyline points="1830,620 1900,620" fill="none" stroke="#F97316" stroke-width="2.4" marker-end="url(#ah-F97316)"/>
 <text x="1865" y="612" font-size="11" font-weight="normal" text-anchor="middle" fill="#F97316">JPA · Flyway</text>
 <polyline points="1830,780 1900,780" fill="none" stroke="#F97316" stroke-width="2.4" marker-end="url(#ah-F97316)"/>

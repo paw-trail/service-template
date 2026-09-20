@@ -31,7 +31,7 @@ def band(y,h,label,color):
 colors=["#374151","#3B82F6","#6366F1","#22C55E","#F97316","#A855F7","#9CA3AF"]
 defs="".join(f'<marker id="ah-{c[1:]}" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="{c}"/></marker>' for c in colors)
 band(20,130,"바깥","#9CA3AF"); band(165,130,"입구","#3B82F6"); band(310,120,"플랫폼","#6366F1")
-band(445,235,"도메인 서비스 14개  ─  전부 게이트웨이 뒤에 있고 바깥에서 직접 닿을 수 없음","#22C55E")
+band(445,235,"도메인 서비스 13개  ─  전부 게이트웨이 뒤에 있고 바깥에서 직접 닿을 수 없음","#22C55E")
 band(700,145,"데이터","#F97316"); band(860,125,"관측  ─  observability 프로파일을 켤 때만","#A855F7")
 box(120,60,220,70,"ext","브라우저","React 프론트 · localhost:5173")
 box(120,200,220,70,"fut","nginx","예정 · 정적 파일 + /api 프록시",dash=True)
@@ -40,7 +40,7 @@ box(30,345,110,70,"ext","GitHub","paw-trail/config")
 box(180,345,280,70,"plat","config-server  :8888","설정 저장소를 읽어 내려 줌")
 box(1000,345,280,70,"plat","eureka-server  :8761","이름 → 주소 장부")
 dom=[("auth",8081,True),("user",8082,True),("pet",8083,True),("place",8084,True),("policy",8085,True),("verdict",8086,False),("search",8087,True),
-     ("ingest",8088,True),("extract",8089,False),("congestion",8090,False),("route",8091,False),("report",8092,True),("notification",8093,True),("review",8094,True)]
+     ("ingest",8088,True),("extract",8089,False),("weather",8090,False),("report",8092,True),("notification",8093,True),("review",8094,True)]
 gx,gy,gw,gh,gap=340,485,160,46,12; pos={}
 for i,(n,p,db) in enumerate(dom):
     r,c=divmod(i,7); x=gx+c*(gw+gap); y=gy+r*(gh+gap+14); pos[n]=(x,y)
@@ -67,7 +67,7 @@ arrow(1140,485,1140,415,"#6366F1","등록 · 하트비트",lx=1215,ly=432)
 arrow(660,340,460,340,"#6366F1",dash=True); text(560,332,"게이트웨이도 설정을 받음",11,fill="#6366F1")
 gb=603
 arrow(420,gb,420,740,"#F97316","JPA · Flyway",lx=480,ly=690); arrow(690,gb,690,740,"#F97316","TTL 값",lx=730,ly=690)
-arrow(1100,gb,1100,740,"#F97316","이벤트 발행 (Outbox)",lx=1190,ly=684); arrow(1300,740,1300,gb,"#F97316","이벤트 소비 (Inbox)",lx=1390,ly=684)
+arrow(936,gb,936,740,"#F97316","이벤트 발행 (Outbox)",lx=946,ly=684,anchor="start"); arrow(1108,740,1108,gb,"#F97316","이벤트 소비 (Inbox)",lx=1118,ly=684,anchor="start")
 arrow(245,900,245,835,"#A855F7"); text(245,833,"/actuator/prometheus 를 긁어 감",11,fill="#A855F7")
 arrow(535,gb,535,900,"#A855F7","로그 전송 (dev · prod 만)",lx=470,ly=855,dash=True); arrow(825,gb,825,900,"#A855F7","추적 전송",lx=870,ly=855,dash=True)
 svg=f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" font-family="{FONT}">
