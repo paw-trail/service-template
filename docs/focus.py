@@ -310,7 +310,7 @@ d.node("ex",1560,620,300,110,"domn","extract-service",
        "원문에서 동반 조건을 뽑아|소스마다 한 벌씩 넣음|규칙 + 모델 두 번 읽기")
 d.node("vd",180,700,240,100,"domn","verdict-service","판정할 때 조건 20칸과|근거를 한 번에 물어봄|500곳까지")
 d.node("kf",700,810,300,80,"data","Kafka","policy.changed 발행|받는 것은 없음")
-d.node("nt",1300,810,300,80,"fut","notification-service","즐겨찾기한 사람에게 알림|아직 없음",dash=True)
+d.node("nt",1300,810,300,80,"domn","notification-service","즐겨찾기한 사람에게 알림|같은 장소면 안 읽은 알림을 갈아 끼움")
 d.edge("gw","r","po","l",B,"공개 1 · 관리자 5",lx=480,ly=434)
 d.edge("cf","b","po","t",V,"기동 시 설정")
 d.edge("po","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
@@ -321,7 +321,7 @@ d.edge("vd","r","po","l",G,"POST /internal/policies/batch",
        via=[(480,700),(480,480)],b_pt=(640,480),lx=494,ly=592,anchor="start")
 d.edge("po","b","kf","t",O,"Outbox 로 발행  (수신하지 않음)",
        a_pt=(900,505),via=[(900,660),(790,660)],b_pt=(790,770),lx=912,ly=600,anchor="start")
-d.edge("kf","r","nt","l",X,"policy.changed",dash=True,lx=1010,ly=802,anchor="start")
+d.edge("kf","r","nt","l",O,"policy.changed",lx=1010,ly=802,anchor="start")
 d.edge("kf","l","vd","b",X,"policy.changed  캐시를 붙일 때 받음",dash=True,
        via=[(180,810)],lx=370,ly=802,anchor="middle")
 d.note(40,880,"조건은 소스마다 한 벌씩 받아 한 벌로 합침 — OWNER > MANUAL > 공공 3종 · 공공끼리는 칸마다 채우고, 값이 갈리면 충돌로 남겨 배지를 붙임")
@@ -478,7 +478,7 @@ d.node("pl",1560,560,300,90,"domn","place-service","목록의 장소 이름|GET 
 d.node("us",1560,700,300,90,"domn","user-service","관리자 목록의 제보자 닉네임 · 사진|GET /internal/users?ids=")
 d.node("kf",700,810,300,80,"data","Kafka","report.resolved 발행|account.withdrawn 수신")
 d.node("au",220,810,240,80,"domn","auth-service","탈퇴를 알림")
-d.node("nt",1300,810,300,80,"fut","notification-service","처리 결과를 제보한 사람에게|아직 없음",dash=True)
+d.node("nt",1300,810,300,80,"domn","notification-service","처리 결과를 제보한 사람에게|문구 셋 · 관리자 메모가 본문")
 d.edge("gw","r","rp","l",B,"공개 2 · 관리자 4",lx=480,ly=434)
 d.edge("cf","b","rp","t",V,"기동 시 설정")
 d.edge("rp","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],lx=1200,ly=205)
@@ -490,8 +490,36 @@ d.edge("rp","b","kf","t",O,"Outbox 로 발행  (처리마다 한 번)",
 d.edge("kf","t","rp","b",O,"account.withdrawn 을 받아 지움",
        a_pt=(610,770),via=[(610,620),(700,620)],b_pt=(700,505),lx=598,ly=632,anchor="end")
 d.edge("au","r","kf","l",X,"account.withdrawn",lx=445,ly=802)
-d.edge("kf","r","nt","l",X,"report.resolved",dash=True,lx=1010,ly=802,anchor="start")
+d.edge("kf","r","nt","l",O,"report.resolved",lx=1010,ly=802,anchor="start")
 d.note(40,880,"제보를 받을 때와 처리할 때는 다른 서비스를 부르지 않음 — 목록을 만들 때만 place · user 에 이름을 묻고, 못 받으면 그 칸만 비운 채 목록을 냄")
 d.note(40,902,"승인해도 장소 · 조건은 안 바뀜 — 관리자가 place · policy 관리자 API 로 먼저 고치고, 여기서는 결과를 남겨 report.resolved 로 한 번 알림")
 d.note(40,924,"같은 사람의 처리 중 같은 제보는 막고 하루 20건까지 받음 · 탈퇴하면 그 계정 제보를 처리 여부와 상관없이 전부 지움 (Inbox 로 한 번만)")
 d.save("report-service","report-service 를 중심으로 · 직접 연결된 것만")
+
+# ── notification-service
+d=D(1860,960)
+d.me("nt",820,450,400,110,"dom","notification-service  :8093",
+     "조건 변경 · 제보 결과를 사람마다 알림으로|API 6개  (공개 6) · 이벤트는 받기만 함")
+d.node("gw",180,300,250,90,"edge","gateway-server","토큰 검증|X-User-Id · X-User-Role 주입")
+d.node("kf",180,560,250,110,"data","Kafka","policy.changed · report.resolved|account.withdrawn 을 받음|한 건씩 · Inbox 로 한 번만")
+d.node("src",180,800,250,80,"domn","policy · report · auth","조건 변경 · 처리 결과 · 탈퇴를 냄")
+d.node("cf",820,120,300,80,"plat","config-server","포트 · DB")
+d.node("eu",1560,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
+d.node("pg",1560,300,300,110,"data","PostgreSQL  notif_db",
+       "notification · notification_setting|+ outbox · inbox · 탈퇴 잠금 (advisory)|안 읽은 수도 DB 로 셈 — Redis 안 씀")
+d.node("us",1560,560,300,90,"domn","user-service","조건 변경 알림을 받을 사람|GET /internal/favorites  100명씩")
+d.node("pl",1560,720,300,90,"domn","place-service","목록의 장소 이름|GET /internal/places?ids=  100곳씩")
+d.edge("gw","r","nt","l",B,"목록 · 읽음 · 안 읽은 수 · 설정",
+       via=[(470,300),(470,420)],b_pt=(620,420),lx=318,ly=288,anchor="start")
+d.edge("kf","r","nt","l",O,"세 토픽을 받음",
+       via=[(520,560),(520,470)],b_pt=(620,470),lx=318,ly=548,anchor="start")
+d.edge("src","t","kf","b",X,"발행",lx=196,ly=732,anchor="start")
+d.edge("cf","b","nt","t",V,"기동 시 설정")
+d.edge("nt","r","eu","l",V,"등록",via=[(1120,450),(1120,120)],a_pt=(1020,450),lx=1200,ly=205)
+d.edge("nt","r","pg","l",O,"JPA · Flyway V20 · 탈퇴 잠금",via=[(1120,450),(1120,300)],a_pt=(1020,450),lx=1200,ly=378)
+d.edge("nt","r","us","l",G,"조건 변경 알림을 만들 때만",a_pt=(1020,480),via=[(1200,480),(1200,560)],lx=1212,ly=530,anchor="start")
+d.edge("nt","r","pl","l",G,"목록을 열 때만",a_pt=(1020,495),via=[(1240,495),(1240,720)],lx=1252,ly=690,anchor="start")
+d.note(40,880,"조건 변경은 그 장소를 즐겨찾기한 사람에게, 제보 결과는 제보한 사람에게 — 끈 사람과 탈퇴한 사람은 만들 때 거르고, 같은 장소의 안 읽은 조건 알림은 갈아 끼움")
+d.note(40,902,"장소 이름은 문구에 안 넣고 목록을 열 때 place 에 물음 (못 받으면 이름만 비움) · 알림을 만들 때 user 명단을 못 받으면 세 번 재시도 뒤 .dlq 로 감")
+d.note(40,924,"탈퇴하면 알림을 지우고 설정 행에 탈퇴 표시를 남김 — 늦게 온 알림거리는 그 표시를 보고 건너뜀 · 만들기와 탈퇴는 advisory 잠금 하나(공유 · 배타)로 한 줄로 섬")
+d.save("notification-service","notification-service 를 중심으로 · 직접 연결된 것만")
