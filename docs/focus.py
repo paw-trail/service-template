@@ -203,7 +203,7 @@ d.save("service-template","새 서비스를 중심으로 · 직접 연결된 것
 
 # ── user-service
 d=D(1640,900)
-d.me("us",800,440,360,100,"dom","user-service  :8082","프로필 · 즐겨찾기 · 방문 · 일정 · 요약|API 20개 · 서비스 7개")
+d.me("us",800,440,360,100,"dom","user-service  :8082","프로필 · 즐겨찾기 · 방문 · 일정 · 요약|API 20개 · 서비스 8개")
 d.node("gw",180,440,240,90,"edge","gateway-server","토큰 검증|X-User-Id 헤더 주입")
 d.node("cf",800,120,300,80,"plat","config-server","포트 · DB · S3 · LLM 설정")
 d.node("eu",1400,120,300,80,"plat","eureka-server","등록 · lb:// 해석")
@@ -212,7 +212,7 @@ d.node("rd",1400,470,300,80,"data","Redis","최근 장소 · 요약 쿨다운 ·
 d.node("s3",180,150,240,80,"ext","AWS S3","프로필 사진",dash=True)
 d.node("ai",180,700,240,80,"ext","OpenAI","하루 요약 문장",dash=True)
 d.node("kf",800,760,300,90,"data","Kafka","account.created  수신|account.withdrawn  수신")
-d.node("pl",1400,690,300,110,"domn","place · verdict · review","이름 · 사진 · 좌표|판정 · 준비물 · 평점|review 만 아직 없음 — 스텁으로 흉내",dash=True)
+d.node("pl",1400,690,300,110,"domn","place · verdict · review · pet","이름 · 사진 · 좌표 · 판정 · 준비물 · 평점|반려동물이 내 것인지 확인 (pet)|review 만 아직 없음 — 스텁으로 흉내",dash=True)
 d.edge("gw","r","us","l",B,"공개 API 18개 · 무인증 경로 0",lx=470,ly=422)
 d.edge("cf","b","us","t",V,"기동 시 설정")
 d.edge("us","r","eu","l",V,"등록",via=[(1080,440),(1080,120)],lx=1160,ly=205)
@@ -222,7 +222,8 @@ d.edge("us","r","pl","l",G,"lb:// 로 부름",via=[(1080,440),(1080,690)],lx=116
 d.edge("us","b","kf","t",O,"Inbox 로 수신  (발행하지 않음)",lx=812,ly=640,anchor="start")
 d.edge("us","l","s3","r",X,"presigned URL",dash=True,via=[(470,440),(470,150)],lx=480,ly=280,anchor="start")
 d.edge("us","l","ai","r",X,"gpt-5.6-luna · 20초",dash=True,via=[(470,440),(470,700)],lx=480,ly=600,anchor="start")
-d.note(40,858,"프로필을 만드는 API 가 없음 — account.created 로 생기고 account.withdrawn 으로 지워짐 · 소프트 딜리트는 user_profile 하나뿐 · 이벤트를 발행하지 않아 outbox 는 비어 있음")
+d.note(40,836,"프로필은 account.created 로 생기고 account.withdrawn 으로 지워짐 · 소프트 딜리트는 user_profile 하나뿐 · 이벤트를 발행하지 않아 outbox 는 비어 있음")
+d.note(40,858,"가입 이벤트를 못 받은 계정은 GET /users/me 가 닉네임 없이 만들고, 늦게 온 account.created 가 빈 닉네임을 채움")
 d.note(40,880,"목록 조회 하나가 place · verdict · review 셋을 부름 — place 가 실패하면 목록 전체가 실패하고 나머지 둘은 그 값만 비움")
 d.save("user-service","user-service 를 중심으로 · 직접 연결된 것만")
 
