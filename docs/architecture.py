@@ -71,7 +71,7 @@ def T(n): return (P[n][0], P[n][1]-BH/2)
 def B(n): return (P[n][0], P[n][1]+BH/2)
 G="#16A34A"; y=lambda n,d=0: P[n][1]+d
 # 같은 행 직선
-poly([R("review"),L("user")],G,"/internal/users",lx=985,ly=y("review")-10)
+poly([R("review"),L("user")],G,"/internal/users ↔ /internal/reviews",lx=985,ly=y("review")-10,both=True,lsize=12)
 poly([R("search"),L("verdict")],G,"/internal/verdicts/batch",lx=985,ly=y("search")-10)
 poly([R("user"),L("place")],G,"일정 조립",lx=1435,ly=y("user")-10)
 poly([R("verdict"),L("policy")],G,"/internal/policies",lx=1435,ly=y("verdict")-10)
@@ -83,6 +83,7 @@ poly([(870,y("extract")),(980,y("extract")),(980,y("ingest",16)),(1100,y("ingest
 poly([(870,y("extract",16)),(1020,y("extract",16)),(1020,805),(1470,805),(1470,y("policy",16)),(1550,y("policy",16))],G,"/internal/policies/bulk",lx=1245,ly=799)
 poly([(870,y("search",-16)),(1060,y("search",-16)),(1060,380),(1600,380),(1600,398)],G,"/internal/places/indexing  (색인)",lx=1330,ly=374)
 poly([(870,y("review",16)),(1000,y("review",16)),(1000,520),(1400,520),(1400,y("pet",-16)),(1550,y("pet",-16))],G,"/internal/pets  (스냅샷)",lx=1150,ly=514)
+poly([(800,y("review",-32)),(800,340),(1700,340),(1700,398)],G,"/internal/places  (내 후기 장소 이름)",lx=1010,ly=334)
 poly([(870,y("notification",-16)),(910,y("notification",-16)),(910,360),(1620,360),(1620,398)],G,"/internal/places",lx=1330,ly=354)
 poly([B("report"),(1210,1074),(1800,1074),(1800,430),R("place")],G,"/internal/places  (목록 이름)",lx=1650,ly=1093)
 poly([L("report"),(1085,y("report")),(1085,414),(1100,414)],G,"/internal/users  (제보자)",lx=1078,ly=960,anchor="end")

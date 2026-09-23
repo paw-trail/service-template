@@ -72,7 +72,7 @@
 <rect x="1550.0" y="848.0" width="220" height="64" rx="10" fill="#F0FDF4" stroke="#86EFAC" stroke-width="2.2"/>
 <text x="1660" y="874" font-size="17" font-weight="bold" text-anchor="middle" fill="#111827">weather</text>
 <text x="1660" y="896" font-size="11" font-weight="normal" text-anchor="middle" fill="#4B5563">:8090 · 무상태 · → 기상청</text>
-<polyline points="870.0,430 1100.0,430" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
+<polyline points="870.0,430 1100.0,430" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)" marker-start="url(#as-16A34A)"/>
 <polyline points="870.0,730 1100.0,730" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="1320.0,430 1550.0,430" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="1320.0,730 1550.0,730" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
@@ -83,6 +83,7 @@
 <polyline points="870,896 1020,896 1020,805 1470,805 1470,746 1550,746" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="870,714 1060,714 1060,380 1600,380 1600,398" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="870,446 1000,446 1000,520 1400,520 1400,564 1550,564" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
+<polyline points="800,398 800,340 1700,340 1700,398" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="870,564 910,564 910,360 1620,360 1620,398" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="1210,1062.0 1210,1074 1800,1074 1800,430 1770.0,430" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
 <polyline points="1100.0,1030 1085,1030 1085,414 1100,414" fill="none" stroke="#16A34A" stroke-width="2.4" marker-end="url(#ah-16A34A)"/>
@@ -136,8 +137,8 @@
 <text x="46" y="184" font-size="16" font-weight="bold" text-anchor="start" fill="#0EA5E9">AWS VPC  ─  배포할 때의 모습.  로컬에서는 이 전체가 docker 네트워크 pawtrail 하나</text>
 <rect x="72" y="345" width="403" height="21" rx="4" fill="#FFFFFF" opacity="0.92"/>
 <text x="76" y="359" font-size="15" font-weight="bold" text-anchor="start" fill="#0EA5E9">프라이빗 서브넷  ─  바깥에서 직접 닿을 수 없음.  EC2 전부 여기</text>
-<rect x="935" y="408" width="100" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
-<text x="985" y="420" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/users</text>
+<rect x="882" y="409" width="207" height="18" rx="4" fill="#FFFFFF" opacity="0.92"/>
+<text x="985" y="420" font-size="12" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/users ↔ /internal/reviews</text>
 <rect x="907" y="708" width="155" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
 <text x="985" y="720" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/verdicts/batch</text>
 <rect x="1405" y="408" width="61" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
@@ -158,6 +159,8 @@
 <text x="1330" y="374" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/places/indexing  (색인)</text>
 <rect x="1078" y="502" width="144" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
 <text x="1150" y="514" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/pets  (스냅샷)</text>
+<rect x="903" y="322" width="214" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
+<text x="1010" y="334" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/places  (내 후기 장소 이름)</text>
 <rect x="1277" y="342" width="107" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
 <text x="1330" y="354" font-size="13" font-weight="normal" text-anchor="middle" fill="#16A34A">/internal/places</text>
 <rect x="1564" y="1081" width="172" height="19" rx="4" fill="#FFFFFF" opacity="0.92"/>
